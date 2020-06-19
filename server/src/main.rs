@@ -1,5 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
 mod app;
 mod graphql;
 
@@ -7,13 +5,8 @@ use actix_web::{middleware, App, HttpServer};
 use anyhow::Result;
 use config::Config;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use structopt::StructOpt;
-
-lazy_static! {
-    /// Globally-accessible config
-    static ref CONFIG: RwLock<Config> = RwLock::new(Config::default());
-}
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "stacks_exchange")]
@@ -22,16 +15,12 @@ struct Opt {
     conf: Option<PathBuf>
 }
 
-fn init_cfg() -> Result<()> {
+fn init_cfg() -> Result<Config> {
     let opt = Opt::from_args();
-    let mut cfg = CONFIG
-        .write()
-        .unwrap();
 
     // always apply default config to ensure all settings defined
-    cfg
-        .merge(config::File::with_name("conf/default.toml"))
-        .unwrap();
+    let mut cfg = Config::new();
+    cfg.merge(config::File::with_name("conf/default.toml")).unwrap();
 
     // apply a conf override file if one is provided
     if let Some(path) = opt.conf {
@@ -42,15 +31,15 @@ fn init_cfg() -> Result<()> {
     cfg.merge(config::Environment::with_prefix("DEF"))?;
 
     pretty_env_logger::init();
-    Ok(())
+    Ok(cfg)
 }
 
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    init_cfg()?;
+    let cfg = init_cfg()?;
 
-    let addr = CONFIG.read().unwrap().get_str("addr").unwrap();
-    let data = Arc::new(app::AppData::new());
+    let addr = cfg.get_str("addr").unwrap();
+    let data = Arc::new(app::AppData::new(cfg));
 
     Ok(HttpServer::new(move || {
         let app = App::new()

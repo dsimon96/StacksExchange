@@ -9,7 +9,6 @@ enum Episode {
     Jedi,
 }
 
-
 #[derive(GraphQLObject)]
 #[graphql(description = "A humanoid creature in the Star Wars universe")]
 struct Human {
@@ -27,6 +26,7 @@ struct NewHuman {
     home_planet: String,
 }
 
+/// Schema entry-point for queries
 pub struct QueryRoot;
 
 #[juniper::object(
@@ -43,6 +43,7 @@ impl QueryRoot {
     }
 }
 
+/// Schema entry-point for mutations
 pub struct MutationRoot;
 
 #[juniper::object(
@@ -65,6 +66,7 @@ pub fn make_schema() -> Schema {
     RootNode::new(QueryRoot {}, MutationRoot {})
 }
 
+/// State shared across queries
 pub struct Context {}
 
 impl Context {
