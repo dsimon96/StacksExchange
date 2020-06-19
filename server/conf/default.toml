@@ -1,0 +1,3 @@
+# Every config option used in the server should be assigned a default value here
+# in order to guarantee no config values are undefined
+addr = "127.0.0.1:8080"

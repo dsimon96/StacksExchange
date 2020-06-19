@@ -1,49 +1,59 @@
-use std::io;
+mod app;
+mod graphql;
+
+use actix_web::{middleware, App, HttpServer};
+use anyhow::Result;
+use config::Config;
+use std::path::PathBuf;
 use std::sync::Arc;
+use structopt::StructOpt;
 
-use actix_web::{middleware, web, App, Error, HttpResponse, HttpServer};
-use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
-
-mod schema;
-
-use crate::schema::{create_schema, Schema};
-
-async fn graphiql() -> HttpResponse {
-    let html = graphiql_source("http://127.0.0.1:8080/graphql");
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(html)
+#[derive(Debug, StructOpt)]
+#[structopt(name = "stacks_exchange")]
+struct Opt {
+    #[structopt(parse(from_os_str), short, long)]
+    conf: Option<PathBuf>
 }
 
-async fn graphql(
-    st: web::Data<Arc<Schema>>,
-    data: web::Json<GraphQLRequest>,
-) -> Result<HttpResponse, Error> {
-    let user = web::block(move || {
-        let res = data.execute(&st, &());
-        Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
-    })
-    .await?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        .body(user))
+fn init_cfg() -> Result<Config> {
+    let opt = Opt::from_args();
+
+    // always apply default config to ensure all settings defined
+    let mut cfg = Config::new();
+    cfg.merge(config::File::with_name("conf/default.toml")).unwrap();
+
+    // apply a conf override file if one is provided
+    if let Some(path) = opt.conf {
+        cfg.merge(config::File::from(path))?;
+    }
+
+    // apply any conf overrides provided in env (e.g. DEF_addr="...")
+    cfg.merge(config::Environment::with_prefix("DEF"))?;
+
+    pretty_env_logger::init();
+    Ok(cfg)
 }
 
 #[actix_rt::main]
-async fn main() -> io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
-    pretty_env_logger::init();
+async fn main() -> Result<()> {
+    let cfg = init_cfg()?;
 
-    let schema = std::sync::Arc::new(create_schema());
+    let addr = cfg.get_str("addr").unwrap();
+    let data = Arc::new(app::AppData::new(cfg));
 
-    HttpServer::new(move || {
-        App::new()
-            .data(schema.clone())
+    Ok(HttpServer::new(move || {
+        let app = App::new()
+            .data(data.clone())
             .wrap(middleware::Logger::default())
-            .service(web::resource("/graphql").route(web::post().to(graphql)))
-            .service(web::resource("/graphiql").route(web::get().to(graphiql)))
+            .service(app::graphql);
+
+        if cfg!(feature = "graphiql") {
+            app.service(app::graphiql)
+        } else {
+            app
+        }
     })
-    .bind("127.0.0.1:8080")?
+    .bind(addr)?
     .run()
-    .await
+    .await?)
 }

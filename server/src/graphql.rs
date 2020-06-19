@@ -1,4 +1,5 @@
 use juniper::FieldResult;
+use juniper::{GraphQLEnum, GraphQLInputObject, GraphQLObject};
 use juniper::RootNode;
 
 #[derive(GraphQLEnum)]
@@ -7,8 +8,6 @@ enum Episode {
     Empire,
     Jedi,
 }
-
-use juniper::{GraphQLEnum, GraphQLInputObject, GraphQLObject};
 
 #[derive(GraphQLObject)]
 #[graphql(description = "A humanoid creature in the Star Wars universe")]
@@ -27,9 +26,12 @@ struct NewHuman {
     home_planet: String,
 }
 
+/// Schema entry-point for queries
 pub struct QueryRoot;
 
-#[juniper::object]
+#[juniper::object(
+    Context = Context,
+)]
 impl QueryRoot {
     fn human(id: String) -> FieldResult<Human> {
         Ok(Human {
@@ -41,9 +43,12 @@ impl QueryRoot {
     }
 }
 
+/// Schema entry-point for mutations
 pub struct MutationRoot;
 
-#[juniper::object]
+#[juniper::object(
+    Context = Context
+)]
 impl MutationRoot {
     fn createHuman(new_human: NewHuman) -> FieldResult<Human> {
         Ok(Human {
@@ -57,6 +62,15 @@ impl MutationRoot {
 
 pub type Schema = RootNode<'static, QueryRoot, MutationRoot>;
 
-pub fn create_schema() -> Schema {
-    Schema::new(QueryRoot {}, MutationRoot {})
+pub fn make_schema() -> Schema {
+    RootNode::new(QueryRoot {}, MutationRoot {})
+}
+
+/// State shared across queries
+pub struct Context {}
+
+impl Context {
+    pub fn new() -> Context {
+        Context {}
+    }
 }
