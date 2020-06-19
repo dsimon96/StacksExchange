@@ -1,49 +1,70 @@
-use std::io;
-use std::sync::Arc;
+#[macro_use]
+extern crate lazy_static;
+mod app;
+mod graphql;
 
-use actix_web::{middleware, web, App, Error, HttpResponse, HttpServer};
-use juniper::http::{graphiql::graphiql_source, GraphQLRequest};
+use actix_web::{middleware, App, HttpServer};
+use anyhow::Result;
+use config::Config;
+use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
+use structopt::StructOpt;
 
-mod schema;
-
-use crate::schema::{create_schema, Schema};
-
-async fn graphiql() -> HttpResponse {
-    let html = graphiql_source("http://127.0.0.1:8080/graphql");
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(html)
+lazy_static! {
+    /// Globally-accessible config
+    static ref CONFIG: RwLock<Config> = RwLock::new(Config::default());
 }
 
-async fn graphql(
-    st: web::Data<Arc<Schema>>,
-    data: web::Json<GraphQLRequest>,
-) -> Result<HttpResponse, Error> {
-    let user = web::block(move || {
-        let res = data.execute(&st, &());
-        Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
-    })
-    .await?;
-    Ok(HttpResponse::Ok()
-        .content_type("application/json")
-        .body(user))
+#[derive(Debug, StructOpt)]
+#[structopt(name = "stacks_exchange")]
+struct Opt {
+    #[structopt(parse(from_os_str), short, long)]
+    conf: Option<PathBuf>
+}
+
+fn init_cfg() -> Result<()> {
+    let opt = Opt::from_args();
+    let mut cfg = CONFIG
+        .write()
+        .unwrap();
+
+    // always apply default config to ensure all settings defined
+    cfg
+        .merge(config::File::with_name("conf/default.toml"))
+        .unwrap();
+
+    // apply a conf override file if one is provided
+    if let Some(path) = opt.conf {
+        cfg.merge(config::File::from(path))?;
+    }
+
+    // apply any conf overrides provided in env (e.g. DEF_addr="...")
+    cfg.merge(config::Environment::with_prefix("DEF"))?;
+
+    pretty_env_logger::init();
+    Ok(())
 }
 
 #[actix_rt::main]
-async fn main() -> io::Result<()> {
-    std::env::set_var("RUST_LOG", "actix_web=info");
-    pretty_env_logger::init();
+async fn main() -> Result<()> {
+    init_cfg()?;
 
-    let schema = std::sync::Arc::new(create_schema());
+    let addr = CONFIG.read().unwrap().get_str("addr").unwrap();
+    let data = Arc::new(app::AppData::new());
 
-    HttpServer::new(move || {
-        App::new()
-            .data(schema.clone())
+    Ok(HttpServer::new(move || {
+        let app = App::new()
+            .data(data.clone())
             .wrap(middleware::Logger::default())
-            .service(web::resource("/graphql").route(web::post().to(graphql)))
-            .service(web::resource("/graphiql").route(web::get().to(graphiql)))
+            .service(app::graphql);
+
+        if cfg!(feature = "graphiql") {
+            app.service(app::graphiql)
+        } else {
+            app
+        }
     })
-    .bind("127.0.0.1:8080")?
+    .bind(addr)?
     .run()
-    .await
+    .await?)
 }
