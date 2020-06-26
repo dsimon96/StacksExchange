@@ -1,3 +1,12 @@
 # Every config option used in the server should be assigned a default value here
 # in order to guarantee no config values are undefined
-addr = "127.0.0.1:8080"
+
+# Address on which the server listens. By default listen only to loopback
+listen_addr = "127.0.0.1"
+
+# Port on which the server listens.
+listen_port = 8080
+
+# Name of the server, used for URL generation
+server_name = "localhost"
+
