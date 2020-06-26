@@ -21,7 +21,7 @@ jobs:
         working-directory: server
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+          args: --all-features --manifest-path server/Cargo.toml
   build_and_test:
     runs-on: ubuntu-latest
     steps:
