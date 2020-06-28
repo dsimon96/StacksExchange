@@ -55,3 +55,52 @@ pub fn make_pool(cfg: &DatabaseSettings) -> Result<Pool> {
 
     Ok(r2d2::Pool::new(manager)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_to_postgres_url() {
+        let basic = DatabaseSettings {
+            user: String::from("user"),
+            password: String::from("hunter2"),
+            host: String::from("host"),
+            port: 1337,
+            dbname: String::from("mydb"),
+            application_name: None,
+            connect_timeout_sec: 0,
+            pool_timeout_ms: 0,
+            read_timeout_ms: 0,
+        };
+        let with_app_name = DatabaseSettings {
+            application_name: Some(String::from("myapp")),
+            ..basic.clone()
+        };
+        let with_timeout = DatabaseSettings {
+            connect_timeout_sec: 42,
+            ..basic.clone()
+        };
+        let with_both = DatabaseSettings {
+            connect_timeout_sec: 42,
+            ..with_app_name.clone()
+        };
+
+        assert_eq!(
+            "postgres://user:hunter2@host:1337/mydb",
+            basic.to_postgres_url()
+        );
+        assert_eq!(
+            "postgres://user:hunter2@host:1337/mydb?application_name=myapp",
+            with_app_name.to_postgres_url()
+        );
+        assert_eq!(
+            "postgres://user:hunter2@host:1337/mydb?connect_timeout=42",
+            with_timeout.to_postgres_url()
+        );
+        assert_eq!(
+            "postgres://user:hunter2@host:1337/mydb?application_name=myapp&connect_timeout=42",
+            with_both.to_postgres_url()
+        );
+    }
+}

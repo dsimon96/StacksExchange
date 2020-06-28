@@ -42,3 +42,41 @@ pub async fn playground(req: HttpRequest) -> HttpResponse {
         .content_type("text/html; charset=utf-8")
         .body(html)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{test, web, App};
+
+    #[actix_rt::test]
+    async fn test_graphiql_and_playground() {
+        let mut app = test::init_service(
+            App::new()
+                .service(
+                    web::resource("graphql")
+                        .name("graphql")
+                        .route(web::post().to(graphql))
+                        .route(web::get().to(graphql)),
+                )
+                .route("graphiql", web::get().to(graphiql))
+                .route("playground", web::get().to(playground)),
+        )
+        .await;
+
+        let req = test::TestRequest::get().uri("/graphiql").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(
+            resp.status().is_success(),
+            "Failed to fetch graphiql: {:?}",
+            resp
+        );
+
+        let req = test::TestRequest::get().uri("/playground").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(
+            resp.status().is_success(),
+            "Failed to fetch playground: {:?}",
+            resp
+        );
+    }
+}

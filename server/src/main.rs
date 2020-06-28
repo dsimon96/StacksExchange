@@ -50,15 +50,15 @@ async fn main() -> Result<()> {
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
             .service(
-                web::resource("graphql")
+                web::resource("/graphql")
                     .name("graphql")
                     .route(web::post().to(app::graphql))
                     .route(web::get().to(app::graphql)),
             );
 
         if cfg!(feature = "graphiql") {
-            app.service(web::resource("graphiql").route(web::get().to(app::graphiql)))
-                .service(web::resource("playground").route(web::get().to(app::playground)))
+            app.service(web::resource("/graphiql").route(web::get().to(app::graphiql)))
+                .service(web::resource("/playground").route(web::get().to(app::playground)))
         } else {
             app
         }
