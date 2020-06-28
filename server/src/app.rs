@@ -1,16 +1,20 @@
+use crate::db;
 use crate::graphql::{Context, Schema};
+use crate::settings::Settings;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
 use juniper::http::{graphiql::graphiql_source, playground::playground_source, GraphQLRequest};
 
 /// Handler to execute a GraphQL request (either a query or a mutation)
 pub async fn graphql(
+    settings: web::Data<Settings>,
     schema: web::Data<Schema>,
-    context: web::Data<Context>,
+    pool: web::Data<db::Pool>,
     req: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, Error> {
+    let context = Context::new(settings.get_ref().to_owned(), pool.get_ref().to_owned());
     let user = web::block(move || {
         let res = req.execute(&schema, &context);
-        Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
+        serde_json::to_string(&res)
     })
     .await?;
     Ok(HttpResponse::Ok()
