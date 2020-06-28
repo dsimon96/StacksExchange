@@ -25,7 +25,7 @@ pub struct QueryRoot;
     Context = Context,
 )]
 impl QueryRoot {
-    fn account(context: &Context, id: String) -> FieldResult<Account> {
+    fn accountById(context: &Context, id: String) -> FieldResult<Account> {
         let acct_id = Uuid::parse_str(&id).or(Err("Invalid id"))?;
 
         let pool_timeout = Duration::from_millis(context.settings.db.pool_timeout_ms);
@@ -37,6 +37,28 @@ impl QueryRoot {
             .or_else(|e| {
                 Err(FieldError::new(
                     "Could not find an account with the given id",
+                    graphql_value!(None),
+                ))
+            })
+    }
+
+    fn accountByEmail(context: &Context, email: String) -> FieldResult<Account> {
+        if !is_valid_email(&email) {
+            return Err(FieldError::new(
+                "Invalid email address",
+                graphql_value!(None),
+            ));
+        }
+
+        let pool_timeout = Duration::from_millis(context.settings.db.pool_timeout_ms);
+        let conn = context.pool.get_timeout(pool_timeout)?;
+
+        account::table
+            .filter(account::email.eq(email))
+            .get_result(&*conn)
+            .or_else(|e| {
+                Err(FieldError::new(
+                    "Could not find an account with the given email",
                     graphql_value!(None),
                 ))
             })
