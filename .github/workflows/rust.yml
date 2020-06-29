@@ -2,27 +2,32 @@ name: Rust
 
 on:
   push:
-    branches: [ master ]
-    paths: [ 'server/*' ]
+    branches: [master]
+    paths: ["server/*"]
   pull_request:
-    branches: [ master ]
-    paths: [ 'server/*' ]
+    branches: [master]
+    paths: ["server/*"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  clippy_check:
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v2
-    - name: Lint
-      uses: actions-rs/clippy-check@v1
-    - name: Build
-      run: cargo build --verbose
-      working-directory: server
-    - name: Run tests
-      run: cargo test --verbose
-      working-directory: server
+      - uses: actions/checkout@v2
+      - run: rustup component add clippy
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --manifest-path server/Cargo.toml
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build
+        run: cargo build --verbose
+        working-directory: server
+      - name: Run tests
+        run: cargo test --verbose
+        working-directory: server

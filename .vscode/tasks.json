@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "cargo",
+      "command": "build",
+      "problemMatcher": ["$rustc"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "label": "build server",
+      "options": {
+        "cwd": "server"
+      }
+    },
+    {
+      "type": "shell",
+      "command": "systemfd",
+      "problemMatcher": ["$rustc"],
+      "label": "run development server",
+      "options": {
+        "cwd": "server",
+        "env": {
+          "RUST_LOG": "info"
+        }
+      },
+      "args": [
+        "--no-pid",
+        "-s",
+        "http::8080",
+        "--",
+        "cargo",
+        "watch",
+        "-x",
+        "run --features autoreload --features graphiql"
+      ]
+    }
+  ]
+}
