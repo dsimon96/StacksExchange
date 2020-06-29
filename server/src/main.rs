@@ -8,7 +8,6 @@ extern crate diesel;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
-use dotenv;
 use settings::Settings;
 use std::{
     convert::TryFrom,

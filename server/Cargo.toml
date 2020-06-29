@@ -29,8 +29,12 @@ uuid = { version = "0.7", features = [ "v4" ] }
 autoreload = ["listenfd"]
 graphiql = []
 
+[lib]
+test = false
+
 [[bin]]
 name = "stacks-exchange"
 
 [[bin]]
 name = "dump-schema"
+test = false

@@ -22,7 +22,7 @@ pub struct DatabaseSettings {
 }
 
 impl DatabaseSettings {
-    /// Obtain a postgres url (https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
+    /// Obtain a [postgres url](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
     /// with the given configuration parameters
     fn to_postgres_url(&self) -> String {
         let mut url = format!(
@@ -58,7 +58,7 @@ pub fn make_pool(cfg: &DatabaseSettings) -> Result<Pool> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::DatabaseSettings;
 
     #[test]
     fn test_to_postgres_url() {
