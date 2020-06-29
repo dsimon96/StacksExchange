@@ -1,8 +1,9 @@
 [package]
-name = "stacks_exchange"
+name = "stacks-exchange"
 version = "0.1.0"
 authors = ["David Simon <D@vidSimon.tech>"]
 edition = "2018"
+default-run = "stacks-exchange"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -27,3 +28,9 @@ uuid = { version = "0.7", features = [ "v4" ] }
 [features]
 autoreload = ["listenfd"]
 graphiql = []
+
+[[bin]]
+name = "stacks-exchange"
+
+[[bin]]
+name = "dump-schema"

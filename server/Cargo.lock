@@ -1672,7 +1672,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "stacks_exchange"
+name = "stacks-exchange"
 version = "0.1.0"
 dependencies = [
  "actix-rt 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",

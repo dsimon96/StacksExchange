@@ -107,3 +107,13 @@ example, to view `INFO` logs from the actix_web logger:
 ```
 RUST_LOG="actix_web=info" cargo run --features graphiql
 ```
+
+# Generating Schema Digest
+
+Many tools in the GraphQL ecosystem depend on having a declaration of a
+service's schema. You can use the binary target `dump-schema` to generate a
+`schema.json` file for use with these tools.
+
+```
+cargo run --bin dump-schema > schema.json
+```
