@@ -1,17 +1,56 @@
 use crate::db::{
-    self,
-    models::{Account, NewAccount},
-    schema::account,
+    self, models,
+    schema::{node, person},
 };
 use crate::settings::Settings;
 use diesel::prelude::*;
 use fast_chemail::is_valid_email;
-use juniper::{graphql_value, FieldError, FieldResult, GraphQLInputObject, RootNode};
+use juniper::{
+    graphql_interface, graphql_value, FieldError, FieldResult, GraphQLInputObject, GraphQLObject,
+    RootNode, ID,
+};
 use std::time::Duration;
 use uuid::Uuid;
 
+#[derive(GraphQLObject)]
+struct Person {
+    id: ID,
+    email: String,
+    display_name: String,
+    first_name: String,
+    last_name: String,
+}
+
+impl From<models::Person> for Person {
+    fn from(person: models::Person) -> Self {
+        Person {
+            id: ID::new(person.node.uid.to_string()),
+            email: person.detail.email,
+            display_name: person.detail.display_name,
+            first_name: person.detail.first_name,
+            last_name: person.detail.last_name,
+        }
+    }
+}
+
+enum Node {
+    Person(Person),
+}
+
+graphql_interface!(Node: () where Scalar = <S> |&self| {
+    field id() -> ID {
+        match *self {
+            Node::Person(Person { ref id, .. }) => id.clone()
+        }
+    }
+
+    instance_resolvers: |_| {
+        &Person => match *self { Node::Person(ref p) => Some(p) }
+    }
+});
+
 #[derive(GraphQLInputObject)]
-struct CreateAccountInput {
+struct NewPersonInput {
     email: String,
     display_name: String,
     first_name: String,
@@ -25,24 +64,7 @@ pub struct QueryRoot;
     Context = Context,
 )]
 impl QueryRoot {
-    fn accountById(context: &Context, id: String) -> FieldResult<Account> {
-        let acct_id = Uuid::parse_str(&id).or(Err("Invalid id"))?;
-
-        let pool_timeout = Duration::from_millis(context.settings.db.pool_timeout_ms);
-        let conn = context.pool.get_timeout(pool_timeout)?;
-
-        account::table
-            .find(&acct_id)
-            .get_result(&*conn)
-            .or_else(|e| {
-                Err(FieldError::new(
-                    "Could not find an account with the given id",
-                    graphql_value!(None),
-                ))
-            })
-    }
-
-    fn accountByEmail(context: &Context, email: String) -> FieldResult<Account> {
+    fn person_by_email(context: &Context, email: String) -> FieldResult<Person> {
         if !is_valid_email(&email) {
             return Err(FieldError::new(
                 "Invalid email address",
@@ -53,12 +75,33 @@ impl QueryRoot {
         let pool_timeout = Duration::from_millis(context.settings.db.pool_timeout_ms);
         let conn = context.pool.get_timeout(pool_timeout)?;
 
-        account::table
-            .filter(account::email.eq(email))
-            .get_result(&*conn)
+        node::table
+            .inner_join(person::table)
+            .filter(person::email.eq(email))
+            .get_result::<models::Person>(&conn)
+            .map(|person| person.into())
             .or_else(|e| {
                 Err(FieldError::new(
-                    "Could not find an account with the given email",
+                    "Could not find a person with the given email",
+                    graphql_value!(None),
+                ))
+            })
+    }
+
+    fn node(context: &Context, id: ID) -> FieldResult<Node> {
+        let acct_id = Uuid::parse_str(&id.to_string()).or(Err("Invalid id"))?;
+
+        let pool_timeout = Duration::from_millis(context.settings.db.pool_timeout_ms);
+        let conn = context.pool.get_timeout(pool_timeout)?;
+
+        node::table
+            .inner_join(person::table)
+            .filter(node::uid.eq(&acct_id))
+            .get_result::<models::Person>(&conn)
+            .map(|person| Node::Person(person.into()))
+            .or_else(|e| {
+                Err(FieldError::new(
+                    "Could not find a node with the given id",
                     graphql_value!(None),
                 ))
             })
@@ -72,7 +115,7 @@ pub struct MutationRoot;
     Context = Context,
 )]
 impl MutationRoot {
-    fn createAccount(context: &Context, input: CreateAccountInput) -> FieldResult<Account> {
+    fn newPerson(context: &Context, input: NewPersonInput) -> FieldResult<Person> {
         if !is_valid_email(&input.email) {
             return Err(FieldError::new(
                 "Invalid email address",
@@ -80,20 +123,29 @@ impl MutationRoot {
             ));
         }
 
-        let new_account = NewAccount {
-            id: &Uuid::new_v4(),
-            email: &input.email,
-            display_name: &input.display_name,
-            first_name: &input.first_name,
-            last_name: &input.last_name,
-        };
-
         let pool_timeout = Duration::from_millis(context.settings.db.pool_timeout_ms);
         let conn = context.pool.get_timeout(pool_timeout)?;
 
-        diesel::insert_into(account::table)
-            .values(&new_account)
-            .get_result(&*conn)
+        conn.build_transaction()
+            .run(|| {
+                let node = diesel::insert_into(node::table)
+                    .values(node::uid.eq(Uuid::new_v4()))
+                    .returning((node::id, node::uid))
+                    .get_result::<models::Node>(&conn)?;
+
+                let new_person = models::NewPerson {
+                    node_id: node.id,
+                    email: &input.email,
+                    display_name: &input.display_name,
+                    first_name: &input.first_name,
+                    last_name: &input.last_name,
+                };
+
+                diesel::insert_into(person::table)
+                    .values(&new_person)
+                    .get_result::<models::PersonDetail>(&conn)
+                    .map(|detail| models::Person { node, detail }.into())
+            })
             .or_else(|e| {
                 // TODO: provide feedback on duplicate email or display_name
                 Err(FieldError::new(
