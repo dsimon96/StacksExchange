@@ -5,7 +5,7 @@ use crate::db::{
 use crate::settings::Settings;
 use async_graphql::{validators::Email, Context, EmptySubscription, FieldError, FieldResult, ID};
 use diesel::prelude::*;
-use std::time::Duration;
+use tokio_diesel::*;
 use uuid::Uuid;
 
 struct Person {
@@ -72,13 +72,11 @@ impl QueryRoot {
         context: &Context<'_>,
         #[arg(validator(Email))] email: String,
     ) -> FieldResult<Person> {
-        let pool_timeout = Duration::from_millis(context.data::<Settings>().db.pool_timeout_ms);
-        let conn = context.data::<db::Pool>().get_timeout(pool_timeout)?;
-
         node::table
             .inner_join(person::table)
             .filter(person::email.eq(email))
-            .get_result::<models::Person>(&conn)
+            .get_result_async::<models::Person>(context.data::<db::Pool>())
+            .await
             .map(|person| person.into())
             .or_else(|_e| {
                 Err(FieldError::from(
@@ -90,13 +88,11 @@ impl QueryRoot {
     async fn node(&self, context: &Context<'_>, id: ID) -> FieldResult<Node> {
         let acct_id = Uuid::parse_str(&id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
-        let pool_timeout = Duration::from_millis(context.data::<Settings>().db.pool_timeout_ms);
-        let conn = context.data::<db::Pool>().get_timeout(pool_timeout)?;
-
         node::table
             .inner_join(person::table)
-            .filter(node::uid.eq(&acct_id))
-            .get_result::<models::Person>(&conn)
+            .filter(node::uid.eq(acct_id))
+            .get_result_async::<models::Person>(context.data::<db::Pool>())
+            .await
             .map(|person| Node::Person(person.into()))
             .or_else(|_e| Err(FieldError::from("Could not find a node with the given id")))
     }
@@ -112,15 +108,13 @@ impl MutationRoot {
         context: &Context<'_>,
         input: NewPersonInput,
     ) -> FieldResult<Person> {
-        let pool_timeout = Duration::from_millis(context.data::<Settings>().db.pool_timeout_ms);
-        let conn = context.data::<db::Pool>().get_timeout(pool_timeout)?;
-
-        conn.build_transaction()
-            .run(|| {
+        context
+            .data::<db::Pool>()
+            .transaction(move |conn| {
                 let node = diesel::insert_into(node::table)
                     .values(node::uid.eq(Uuid::new_v4()))
                     .returning((node::id, node::uid))
-                    .get_result::<models::Node>(&conn)?;
+                    .get_result::<models::Node>(conn)?;
 
                 let new_person = models::NewPerson {
                     node_id: node.id,
@@ -132,9 +126,10 @@ impl MutationRoot {
 
                 diesel::insert_into(person::table)
                     .values(&new_person)
-                    .get_result::<models::PersonDetail>(&conn)
+                    .get_result::<models::PersonDetail>(conn)
                     .map(|detail| models::Person { node, detail }.into())
             })
+            .await
             .or_else(|_e| {
                 // TODO: provide feedback on duplicate email or display_name
                 Err(FieldError::from("Failed to create new account"))
