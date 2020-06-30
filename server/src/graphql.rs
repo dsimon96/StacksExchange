@@ -145,8 +145,20 @@ impl MutationRoot {
 pub type Schema = async_graphql::Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
 pub fn make_schema(settings: Settings, pool: db::Pool) -> Schema {
-    Schema::build(QueryRoot {}, MutationRoot {}, EmptySubscription {})
+    let mut builder = Schema::build(QueryRoot {}, MutationRoot {}, EmptySubscription {})
         .data(settings)
         .data(pool)
-        .finish()
+        .extension(|| async_graphql::extensions::Logger::default());
+
+    #[cfg(feature = "graphiql")]
+    {
+        builder = builder.extension(|| async_graphql::extensions::ApolloTracing::default());
+    }
+
+    #[cfg(not(feature = "graphiql"))]
+    {
+        builder = builder.disable_introspection();
+    }
+
+    builder.finish()
 }
