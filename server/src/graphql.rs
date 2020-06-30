@@ -88,7 +88,7 @@ impl QueryRoot {
     }
 
     async fn node(&self, context: &Context<'_>, id: ID) -> FieldResult<Node> {
-        let acct_id = Uuid::parse_str(&id).or(Err(FieldError::from("Invalid ID")))?;
+        let acct_id = Uuid::parse_str(&id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
         let pool_timeout = Duration::from_millis(context.data::<Settings>().db.pool_timeout_ms);
         let conn = context.data::<db::Pool>().get_timeout(pool_timeout)?;
