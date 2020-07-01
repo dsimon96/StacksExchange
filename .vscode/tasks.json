@@ -11,7 +11,7 @@
       },
       "label": "build server",
       "options": {
-        "cwd": "server"
+        "cwd": "${workspaceFolder}/server"
       }
     },
     {
@@ -20,7 +20,7 @@
       "problemMatcher": ["$rustc"],
       "label": "run development server",
       "options": {
-        "cwd": "server"
+        "cwd": "${workspaceFolder}/server"
       },
       "args": [
         "--no-pid",
