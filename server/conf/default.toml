@@ -1,12 +1,19 @@
 # Every config option used in the server should be assigned a default value here
 # in order to guarantee no config values are undefined
 
-# Address on which the server listens. By default listen only to loopback
-listen_addr = "127.0.0.1"
+[server]
+listen_addr = "127.0.0.1" # Address on which the server listens. By default listen only to loopback
+listen_port = 8080 # Port on which the server listens.
+name = "localhost" # Name of the server, used for URL generation
 
-# Port on which the server listens.
-listen_port = 8080
-
-# Name of the server, used for URL generation
-server_name = "localhost"
+[db]
+application_name = "stacks_exchange" # application_name parameter provided to postgres server
+connect_timeout_sec = 0 # Set to zero for no connection timeout
+dbname = "stacks_exchange" # Name of the database
+host = "localhost" # Hostname for the database server
+port = 5432 # Port for the database server
+user = "postgres" # Username to authenticate with database
+password = "" # Password to authenticate with database. Use environment to set
+pool_timeout_ms = 5000 # Timeout getting a connection from the pool
+read_timeout_ms = 5000 # timeout for read queries
 

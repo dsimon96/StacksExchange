@@ -12,22 +12,18 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  clippy_check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - run: rustup component add clippy
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --manifest-path server/Cargo.toml
   build_and_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - run: rustup component add clippy
       - name: Build
         run: cargo build --verbose
         working-directory: server
+      - uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --manifest-path server/Cargo.toml
       - name: Run tests
         run: cargo test --verbose
         working-directory: server

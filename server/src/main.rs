@@ -1,12 +1,19 @@
 mod app;
+mod db;
 mod graphql;
+mod settings;
+
+#[macro_use]
+extern crate diesel;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
-use config::Config;
-use std::convert::TryFrom;
-use std::net::{IpAddr, SocketAddr};
-use std::path::PathBuf;
+use settings::Settings;
+use std::{
+    convert::TryFrom,
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+};
 use structopt::StructOpt;
 
 #[cfg(feature = "autoreload")]
@@ -19,53 +26,38 @@ struct Opt {
     conf: Option<PathBuf>,
 }
 
-fn init_cfg() -> Result<Config> {
-    let opt = Opt::from_args();
-
-    // always apply default config to ensure all settings defined
-    let mut cfg = Config::new();
-    cfg.merge(config::File::with_name("conf/default.toml"))?;
-
-    // apply a conf override file if one is provided
-    if let Some(path) = opt.conf {
-        cfg.merge(config::File::from(path))?;
-    }
-
-    // apply any conf overrides provided in env (e.g. DEF_addr="...")
-    cfg.merge(config::Environment::with_prefix("DEF"))?;
-
-    pretty_env_logger::init();
-    Ok(cfg)
-}
-
 #[actix_rt::main]
 async fn main() -> Result<()> {
-    let cfg = init_cfg()?;
+    dotenv::dotenv().ok();
+    let opt = Opt::from_args();
+    let settings = Settings::init(opt.conf)?;
+    pretty_env_logger::init();
 
     // validate server config values before doing anything else
-    let listen_addr = cfg.get_str("listen_addr").unwrap();
-    let listen_port = u16::try_from(cfg.get_int("listen_port").unwrap())?;
-    let server_name = cfg.get_str("server_name").unwrap();
-    let addr = SocketAddr::from((listen_addr.parse::<IpAddr>()?, listen_port));
-
-    let context = web::Data::new(graphql::Context::new());
+    let addr = SocketAddr::from((
+        settings.server.listen_addr.parse::<IpAddr>()?,
+        u16::try_from(settings.server.listen_port)?,
+    ));
+    let pool = db::make_pool(&settings.db)?;
+    let server_name = settings.server.name.clone();
 
     let mut server = HttpServer::new(move || {
         let app = App::new()
             .data(graphql::make_schema())
-            .app_data(context.clone())
+            .data(pool.clone())
+            .data(settings.clone())
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
             .service(
-                web::resource("graphql")
+                web::resource("/graphql")
                     .name("graphql")
                     .route(web::post().to(app::graphql))
                     .route(web::get().to(app::graphql)),
             );
 
         if cfg!(feature = "graphiql") {
-            app.service(web::resource("graphiql").route(web::get().to(app::graphiql)))
-                .service(web::resource("playground").route(web::get().to(app::playground)))
+            app.service(web::resource("/graphiql").route(web::get().to(app::graphiql)))
+                .service(web::resource("/playground").route(web::get().to(app::playground)))
         } else {
             app
         }
