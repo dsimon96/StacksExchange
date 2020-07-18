@@ -43,9 +43,7 @@ async fn main() -> Result<()> {
 
     let mut server = HttpServer::new(move || {
         let app = App::new()
-            .data(graphql::make_schema())
-            .data(pool.clone())
-            .data(settings.clone())
+            .data(graphql::make_schema(settings.clone(), pool.clone()))
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
             .service(

@@ -16,4 +16,3 @@ user = "postgres" # Username to authenticate with database
 password = "" # Password to authenticate with database. Use environment to set
 pool_timeout_ms = 5000 # Timeout getting a connection from the pool
 read_timeout_ms = 5000 # timeout for read queries
-

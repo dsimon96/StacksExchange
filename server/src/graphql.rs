@@ -3,16 +3,11 @@ use crate::db::{
     schema::{node, person},
 };
 use crate::settings::Settings;
+use async_graphql::{validators::Email, Context, EmptySubscription, FieldError, FieldResult, ID};
 use diesel::prelude::*;
-use fast_chemail::is_valid_email;
-use juniper::{
-    graphql_interface, graphql_value, FieldError, FieldResult, GraphQLInputObject, GraphQLObject,
-    RootNode, ID,
-};
-use std::time::Duration;
+use tokio_diesel::*;
 use uuid::Uuid;
 
-#[derive(GraphQLObject)]
 struct Person {
     id: ID,
     email: String,
@@ -21,10 +16,30 @@ struct Person {
     last_name: String,
 }
 
+#[async_graphql::Object]
+impl Person {
+    async fn id(&self) -> &str {
+        &self.id
+    }
+
+    async fn email(&self) -> &str {
+        &self.email
+    }
+    async fn display_name(&self) -> &str {
+        &self.display_name
+    }
+    async fn first_name(&self) -> &str {
+        &self.first_name
+    }
+    async fn last_name(&self) -> &str {
+        &self.last_name
+    }
+}
+
 impl From<models::Person> for Person {
     fn from(person: models::Person) -> Self {
         Person {
-            id: ID::new(person.node.uid.to_string()),
+            id: person.node.uid.into(),
             email: person.detail.email,
             display_name: person.detail.display_name,
             first_name: person.detail.first_name,
@@ -33,24 +48,14 @@ impl From<models::Person> for Person {
     }
 }
 
+#[async_graphql::Interface(field(name = "id", type = "&str"))]
 enum Node {
     Person(Person),
 }
 
-graphql_interface!(Node: () where Scalar = <S> |&self| {
-    field id() -> ID {
-        match *self {
-            Node::Person(Person { ref id, .. }) => id.clone()
-        }
-    }
-
-    instance_resolvers: |_| {
-        &Person => match *self { Node::Person(ref p) => Some(p) }
-    }
-});
-
-#[derive(GraphQLInputObject)]
+#[async_graphql::InputObject]
 struct NewPersonInput {
+    #[field(validator(Email))]
     email: String,
     display_name: String,
     first_name: String,
@@ -60,78 +65,56 @@ struct NewPersonInput {
 /// Schema entry-point for queries
 pub struct QueryRoot;
 
-#[juniper::object(
-    Context = Context,
-)]
+#[async_graphql::Object]
 impl QueryRoot {
-    fn person_by_email(context: &Context, email: String) -> FieldResult<Person> {
-        if !is_valid_email(&email) {
-            return Err(FieldError::new(
-                "Invalid email address",
-                graphql_value!(None),
-            ));
-        }
-
-        let pool_timeout = Duration::from_millis(context.settings.db.pool_timeout_ms);
-        let conn = context.pool.get_timeout(pool_timeout)?;
-
+    async fn person_by_email(
+        &self,
+        context: &Context<'_>,
+        #[arg(validator(Email))] email: String,
+    ) -> FieldResult<Person> {
         node::table
             .inner_join(person::table)
             .filter(person::email.eq(email))
-            .get_result::<models::Person>(&conn)
+            .get_result_async::<models::Person>(context.data::<db::Pool>())
+            .await
             .map(|person| person.into())
-            .or_else(|e| {
-                Err(FieldError::new(
+            .or_else(|_e| {
+                Err(FieldError::from(
                     "Could not find a person with the given email",
-                    graphql_value!(None),
                 ))
             })
     }
 
-    fn node(context: &Context, id: ID) -> FieldResult<Node> {
-        let acct_id = Uuid::parse_str(&id.to_string()).or(Err("Invalid id"))?;
-
-        let pool_timeout = Duration::from_millis(context.settings.db.pool_timeout_ms);
-        let conn = context.pool.get_timeout(pool_timeout)?;
+    async fn node(&self, context: &Context<'_>, id: ID) -> FieldResult<Node> {
+        let acct_id = Uuid::parse_str(&id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
         node::table
             .inner_join(person::table)
-            .filter(node::uid.eq(&acct_id))
-            .get_result::<models::Person>(&conn)
+            .filter(node::uid.eq(acct_id))
+            .get_result_async::<models::Person>(context.data::<db::Pool>())
+            .await
             .map(|person| Node::Person(person.into()))
-            .or_else(|e| {
-                Err(FieldError::new(
-                    "Could not find a node with the given id",
-                    graphql_value!(None),
-                ))
-            })
+            .or_else(|_e| Err(FieldError::from("Could not find a node with the given id")))
     }
 }
 
 /// Schema entry-point for mutations
 pub struct MutationRoot;
 
-#[juniper::object(
-    Context = Context,
-)]
+#[async_graphql::Object]
 impl MutationRoot {
-    fn newPerson(context: &Context, input: NewPersonInput) -> FieldResult<Person> {
-        if !is_valid_email(&input.email) {
-            return Err(FieldError::new(
-                "Invalid email address",
-                graphql_value!(None),
-            ));
-        }
-
-        let pool_timeout = Duration::from_millis(context.settings.db.pool_timeout_ms);
-        let conn = context.pool.get_timeout(pool_timeout)?;
-
-        conn.build_transaction()
-            .run(|| {
+    async fn new_person(
+        &self,
+        context: &Context<'_>,
+        input: NewPersonInput,
+    ) -> FieldResult<Person> {
+        context
+            .data::<db::Pool>()
+            .transaction(move |conn| {
                 let node = diesel::insert_into(node::table)
                     .values(node::uid.eq(Uuid::new_v4()))
                     .returning((node::id, node::uid))
-                    .get_result::<models::Node>(&conn)?;
+                    .get_result::<models::Node>(conn)?;
 
                 let new_person = models::NewPerson {
                     node_id: node.id,
@@ -143,33 +126,34 @@ impl MutationRoot {
 
                 diesel::insert_into(person::table)
                     .values(&new_person)
-                    .get_result::<models::PersonDetail>(&conn)
+                    .get_result::<models::PersonDetail>(conn)
                     .map(|detail| models::Person { node, detail }.into())
             })
-            .or_else(|e| {
+            .await
+            .or_else(|_e| {
                 // TODO: provide feedback on duplicate email or display_name
-                Err(FieldError::new(
-                    "Failed to create new account",
-                    graphql_value!(None),
-                ))
+                Err(FieldError::from("Failed to create new account"))
             })
     }
 }
 
-pub type Schema = RootNode<'static, QueryRoot, MutationRoot>;
+pub type Schema = async_graphql::Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
-pub fn make_schema() -> Schema {
-    RootNode::new(QueryRoot {}, MutationRoot {})
-}
+pub fn make_schema(settings: Settings, pool: db::Pool) -> Schema {
+    let mut builder = Schema::build(QueryRoot {}, MutationRoot {}, EmptySubscription {})
+        .data(settings)
+        .data(pool)
+        .extension(|| async_graphql::extensions::Logger::default());
 
-/// State shared across queries
-pub struct Context {
-    settings: Settings,
-    pool: db::Pool,
-}
-
-impl Context {
-    pub fn new(settings: Settings, pool: db::Pool) -> Context {
-        Context { settings, pool }
+    #[cfg(feature = "graphiql")]
+    {
+        builder = builder.extension(|| async_graphql::extensions::ApolloTracing::default());
     }
+
+    #[cfg(not(feature = "graphiql"))]
+    {
+        builder = builder.disable_introspection();
+    }
+
+    builder.finish()
 }
