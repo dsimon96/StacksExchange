@@ -11,10 +11,10 @@ pub struct Node {
 #[derive(Queryable, Identifiable)]
 #[table_name = "person"]
 pub struct PersonDetail {
-    pub node_id: i32,
     pub id: i32,
-    pub email: String,
+    pub node_id: i32,
     pub display_name: String,
+    pub email: String,
     pub first_name: String,
     pub last_name: String,
 }
@@ -28,8 +28,8 @@ pub struct Person {
 #[derive(Queryable, Identifiable)]
 #[table_name = "squad"]
 pub struct SquadDetail {
-    pub node_id: i32,
     pub id: i32,
+    pub node_id: i32,
     pub display_name: String,
 }
 
@@ -47,6 +47,13 @@ pub struct NewPerson<'a> {
     pub display_name: &'a str,
     pub first_name: &'a str,
     pub last_name: &'a str,
+}
+
+#[derive(Insertable)]
+#[table_name = "squad"]
+pub struct NewSquad<'a> {
+    pub node_id: i32,
+    pub display_name: &'a str,
 }
 
 #[derive(Identifiable, Queryable)]

@@ -5,6 +5,7 @@ use crate::db::{
 use crate::settings::Settings;
 use async_graphql::{validators::Email, Context, EmptySubscription, FieldError, FieldResult, ID};
 use diesel::prelude::*;
+use log;
 use tokio_diesel::*;
 use uuid::Uuid;
 
@@ -128,6 +129,28 @@ struct NewPersonPayload {
     person: Person,
 }
 
+#[async_graphql::InputObject]
+struct NewSquadInput {
+    display_name: String,
+}
+
+#[async_graphql::SimpleObject]
+struct NewSquadPayload {
+    squad: Squad,
+}
+
+#[async_graphql::InputObject]
+struct AddPersonToSquadInput {
+    person_id: ID,
+    squad_id: ID,
+}
+
+#[async_graphql::SimpleObject]
+struct AddPersonToSquadPayload {
+    person: Person,
+    squad: Squad,
+}
+
 /// Schema entry-point for queries
 pub struct QueryRoot;
 
@@ -201,6 +224,88 @@ impl MutationRoot {
             .or_else(|_e| {
                 // TODO: provide feedback on duplicate email or display_name
                 Err(FieldError::from("Failed to create new account"))
+            })
+    }
+
+    async fn new_squad(
+        &self,
+        context: &Context<'_>,
+        input: NewSquadInput,
+    ) -> FieldResult<NewSquadPayload> {
+        context
+            .data::<db::Pool>()
+            .transaction(move |conn| {
+                let node = diesel::insert_into(node::table)
+                    .values(node::uid.eq(Uuid::new_v4()))
+                    .returning((node::id, node::uid))
+                    .get_result::<models::Node>(conn)?;
+
+                let new_squad = models::NewSquad {
+                    node_id: node.id,
+                    display_name: &input.display_name,
+                };
+
+                diesel::insert_into(squad::table)
+                    .values(&new_squad)
+                    .get_result::<models::SquadDetail>(conn)
+                    .map(|detail| NewSquadPayload {
+                        squad: models::Squad { node, detail }.into(),
+                    })
+            })
+            .await
+            .or_else(|_e| {
+                // TODO: provide feedback on duplicate display_name
+                Err(FieldError::from("Failed to create new squad"))
+            })
+    }
+
+    async fn add_person_to_squad(
+        &self,
+        context: &Context<'_>,
+        input: AddPersonToSquadInput,
+    ) -> FieldResult<AddPersonToSquadPayload> {
+        let person_uid =
+            Uuid::parse_str(&input.person_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+        let squad_uid =
+            Uuid::parse_str(&input.squad_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+
+        context
+            .data::<db::Pool>()
+            .transaction(move |conn| {
+                let person = node::table
+                    .inner_join(person::table)
+                    .filter(node::uid.eq(person_uid))
+                    .get_result::<models::Person>(conn)?;
+
+                let squad = node::table
+                    .inner_join(squad::table)
+                    .filter(node::uid.eq(squad_uid))
+                    .get_result::<models::Squad>(conn)?;
+
+                log::info!(
+                    "Node id: {}, Squad id: {}",
+                    squad.detail.node_id,
+                    squad.detail.id
+                );
+
+                let new_person_squad_connection = models::NewPersonSquadConnection {
+                    person_id: person.detail.id,
+                    squad_id: squad.detail.id,
+                };
+
+                diesel::insert_into(person_squad_connection::table)
+                    .values(&new_person_squad_connection)
+                    .execute(conn)?;
+
+                Ok(AddPersonToSquadPayload {
+                    person: person.into(),
+                    squad: squad.into(),
+                })
+            })
+            .await
+            .or_else(|_e| {
+                // TODO: provide feedback on duplicate display_name
+                Err(FieldError::from(_e))
             })
     }
 }
