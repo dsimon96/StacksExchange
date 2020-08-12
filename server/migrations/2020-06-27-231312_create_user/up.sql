@@ -11,3 +11,6 @@ CREATE TABLE person (
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL
 );
+CREATE INDEX ON node ( id, uid );
+CREATE INDEX ON node ( uid, id );
+CREATE INDEX ON person ( node_id );

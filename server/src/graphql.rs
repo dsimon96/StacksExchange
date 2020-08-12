@@ -1,6 +1,6 @@
 use crate::db::{
     self, models,
-    schema::{node, person},
+    schema::{node, person, person_squad_connection, squad},
 };
 use crate::settings::Settings;
 use async_graphql::{validators::Email, Context, EmptySubscription, FieldError, FieldResult, ID};
@@ -9,46 +9,107 @@ use tokio_diesel::*;
 use uuid::Uuid;
 
 struct Person {
-    id: ID,
-    email: String,
-    display_name: String,
-    first_name: String,
-    last_name: String,
+    model: models::Person,
+}
+
+struct Squad {
+    model: models::Squad,
+}
+
+#[async_graphql::SimpleObject]
+struct PageInfo {
+    has_next_page: bool,
+    has_previous_page: bool,
+    start_cursor: String,
+    end_cursor: String,
+}
+
+#[async_graphql::SimpleObject]
+struct PersonSquadEdge {
+    cursor: String,
+    node: Squad,
+}
+
+#[async_graphql::SimpleObject]
+struct PersonSquadConnection {
+    edges: Vec<PersonSquadEdge>,
+    page_info: PageInfo,
 }
 
 #[async_graphql::Object]
 impl Person {
-    async fn id(&self) -> &str {
-        &self.id
+    async fn id(&self) -> String {
+        self.model.node.uid.to_string()
     }
 
     async fn email(&self) -> &str {
-        &self.email
+        &self.model.detail.email
     }
     async fn display_name(&self) -> &str {
-        &self.display_name
+        &self.model.detail.display_name
     }
     async fn first_name(&self) -> &str {
-        &self.first_name
+        &self.model.detail.first_name
     }
     async fn last_name(&self) -> &str {
-        &self.last_name
+        &self.model.detail.last_name
+    }
+
+    async fn squads(&self, context: &Context<'_>) -> FieldResult<PersonSquadConnection> {
+        use diesel::expression::dsl::any;
+
+        let squad_ids = person_squad_connection::table
+            .filter(person_squad_connection::person_id.eq(self.model.detail.id))
+            .select(person_squad_connection::squad_id);
+
+        node::table
+            .inner_join(squad::table)
+            .filter(squad::id.eq(any(squad_ids)))
+            .load_async::<models::Squad>(context.data::<db::Pool>())
+            .await
+            .map(|squads| PersonSquadConnection {
+                edges: squads
+                    .into_iter()
+                    .map(|squad| PersonSquadEdge {
+                        cursor: String::from(""),
+                        node: squad.into(),
+                    })
+                    .collect(),
+                page_info: PageInfo {
+                    has_next_page: false,
+                    has_previous_page: false,
+                    start_cursor: String::from(""),
+                    end_cursor: String::from(""),
+                },
+            })
+            .or_else(|_e| Err(FieldError::from("Internal error")))
+    }
+}
+
+#[async_graphql::Object]
+impl Squad {
+    async fn id(&self) -> String {
+        self.model.node.uid.to_string()
+    }
+
+    async fn display_name(&self) -> &str {
+        &self.model.detail.display_name
     }
 }
 
 impl From<models::Person> for Person {
-    fn from(person: models::Person) -> Self {
-        Person {
-            id: person.node.uid.into(),
-            email: person.detail.email,
-            display_name: person.detail.display_name,
-            first_name: person.detail.first_name,
-            last_name: person.detail.last_name,
-        }
+    fn from(model: models::Person) -> Self {
+        Person { model }
     }
 }
 
-#[async_graphql::Interface(field(name = "id", type = "&str"))]
+impl From<models::Squad> for Squad {
+    fn from(model: models::Squad) -> Self {
+        Squad { model }
+    }
+}
+
+#[async_graphql::Interface(field(name = "id", type = "String"))]
 enum Node {
     Person(Person),
 }
@@ -60,6 +121,11 @@ struct NewPersonInput {
     display_name: String,
     first_name: String,
     last_name: String,
+}
+
+#[async_graphql::SimpleObject]
+struct NewPersonPayload {
+    person: Person,
 }
 
 /// Schema entry-point for queries
@@ -107,7 +173,7 @@ impl MutationRoot {
         &self,
         context: &Context<'_>,
         input: NewPersonInput,
-    ) -> FieldResult<Person> {
+    ) -> FieldResult<NewPersonPayload> {
         context
             .data::<db::Pool>()
             .transaction(move |conn| {
@@ -127,7 +193,9 @@ impl MutationRoot {
                 diesel::insert_into(person::table)
                     .values(&new_person)
                     .get_result::<models::PersonDetail>(conn)
-                    .map(|detail| models::Person { node, detail }.into())
+                    .map(|detail| NewPersonPayload {
+                        person: models::Person { node, detail }.into(),
+                    })
             })
             .await
             .or_else(|_e| {
