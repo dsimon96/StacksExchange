@@ -1,7 +1,9 @@
 -- Your SQL goes here
+CREATE TYPE node_type AS ENUM ('person');
 CREATE TABLE node (
     id SERIAL PRIMARY KEY,
-    uid UUID NOT NULL UNIQUE
+    uid UUID NOT NULL UNIQUE,
+    node_type node_type NOT NULL
 );
 CREATE TABLE person (
     id SERIAL PRIMARY KEY,

@@ -12,3 +12,4 @@ CREATE TABLE person_squad_connection (
 CREATE INDEX ON squad ( node_id );
 CREATE INDEX ON person_squad_connection ( person_id, id, squad_id );
 CREATE INDEX ON person_squad_connection ( squad_id, id, person_id );
+ALTER TYPE node_type ADD VALUE IF NOT EXISTS 'squad';

@@ -5,7 +5,6 @@ use crate::db::{
 use crate::settings::Settings;
 use async_graphql::{validators::Email, Context, EmptySubscription, FieldError, FieldResult, ID};
 use diesel::prelude::*;
-use log;
 use tokio_diesel::*;
 use uuid::Uuid;
 
@@ -155,6 +154,7 @@ impl From<models::Squad> for Squad {
 #[async_graphql::Interface(field(name = "id", type = "String"))]
 enum Node {
     Person(Person),
+    Squad(Squad),
 }
 
 #[async_graphql::InputObject]
@@ -217,14 +217,37 @@ impl QueryRoot {
     }
 
     async fn node(&self, context: &Context<'_>, id: ID) -> FieldResult<Node> {
-        let acct_id = Uuid::parse_str(&id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+        let uid = Uuid::parse_str(&id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
-        node::table
-            .inner_join(person::table)
-            .filter(node::uid.eq(acct_id))
-            .get_result_async::<models::Person>(context.data::<db::Pool>())
+        context
+            .data::<db::Pool>()
+            .transaction(move |conn| {
+                let node = node::table
+                    .filter(node::uid.eq(uid))
+                    .get_result::<models::Node>(conn)?;
+
+                match node.node_type {
+                    models::NodeType::Person => {
+                        let detail = person::table
+                            .filter(person::node_id.eq(node.id))
+                            .get_result::<models::PersonDetail>(conn)?;
+
+                        Ok(Node::Person(Person {
+                            model: models::Person { node, detail }.into(),
+                        }))
+                    }
+                    models::NodeType::Squad => {
+                        let detail = squad::table
+                            .filter(squad::node_id.eq(node.id))
+                            .get_result::<models::SquadDetail>(conn)?;
+
+                        Ok(Node::Squad(Squad {
+                            model: models::Squad { node, detail }.into(),
+                        }))
+                    }
+                }
+            })
             .await
-            .map(|person| Node::Person(person.into()))
             .or_else(|_e| Err(FieldError::from("Could not find a node with the given id")))
     }
 }
@@ -242,9 +265,13 @@ impl MutationRoot {
         context
             .data::<db::Pool>()
             .transaction(move |conn| {
+                let new_node = models::NewNode {
+                    uid: Uuid::new_v4(),
+                    node_type: models::NodeType::Person,
+                };
+
                 let node = diesel::insert_into(node::table)
-                    .values(node::uid.eq(Uuid::new_v4()))
-                    .returning((node::id, node::uid))
+                    .values(new_node)
                     .get_result::<models::Node>(conn)?;
 
                 let new_person = models::NewPerson {
@@ -277,9 +304,13 @@ impl MutationRoot {
         context
             .data::<db::Pool>()
             .transaction(move |conn| {
+                let new_node = models::NewNode {
+                    uid: Uuid::new_v4(),
+                    node_type: models::NodeType::Squad,
+                };
+
                 let node = diesel::insert_into(node::table)
-                    .values(node::uid.eq(Uuid::new_v4()))
-                    .returning((node::id, node::uid))
+                    .values(new_node)
                     .get_result::<models::Node>(conn)?;
 
                 let new_squad = models::NewSquad {
@@ -323,12 +354,6 @@ impl MutationRoot {
                     .inner_join(squad::table)
                     .filter(node::uid.eq(squad_uid))
                     .get_result::<models::Squad>(conn)?;
-
-                log::info!(
-                    "Node id: {}, Squad id: {}",
-                    squad.detail.node_id,
-                    squad.detail.id
-                );
 
                 let new_person_squad_connection = models::NewPersonSquadConnection {
                     person_id: person.detail.id,

@@ -2,6 +2,7 @@ table! {
     node (id) {
         id -> Int4,
         uid -> Uuid,
+        node_type -> crate::db::models::NodeTypeMapping,
     }
 }
 
@@ -37,9 +38,4 @@ joinable!(person_squad_connection -> person (person_id));
 joinable!(person_squad_connection -> squad (squad_id));
 joinable!(squad -> node (node_id));
 
-allow_tables_to_appear_in_same_query!(
-    node,
-    person,
-    person_squad_connection,
-    squad,
-);
+allow_tables_to_appear_in_same_query!(node, person, person_squad_connection, squad,);

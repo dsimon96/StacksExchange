@@ -1,11 +1,26 @@
 use super::schema::{node, person, person_squad_connection, squad};
+use diesel_derive_enum::DbEnum;
 use uuid::Uuid;
+
+#[derive(Debug, DbEnum)]
+pub enum NodeType {
+    Person,
+    Squad,
+}
 
 #[derive(Queryable, Identifiable)]
 #[table_name = "node"]
 pub struct Node {
     pub id: i32,
     pub uid: Uuid,
+    pub node_type: NodeType,
+}
+
+#[derive(Insertable)]
+#[table_name = "node"]
+pub struct NewNode {
+    pub uid: Uuid,
+    pub node_type: NodeType,
 }
 
 #[derive(Queryable, Identifiable)]
