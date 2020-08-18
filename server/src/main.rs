@@ -1,4 +1,5 @@
 mod app;
+mod auth;
 mod db;
 mod graphql;
 mod settings;
@@ -15,6 +16,7 @@ use std::{
     path::PathBuf,
 };
 use structopt::StructOpt;
+use actix_identity::{CookieIdentityPolicy, IdentityService};
 
 #[cfg(feature = "autoreload")]
 use listenfd::ListenFd;
@@ -46,6 +48,12 @@ async fn main() -> Result<()> {
             .data(graphql::make_schema(settings.clone(), pool.clone()))
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
+            .wrap(IdentityService::new(
+                // <- create identity middleware
+                CookieIdentityPolicy::new(&[0; 32])    // <- create cookie identity policy
+                      .name("stacksexchange-auth-cookie")
+                      .secure(false))) // TODO(change to true one shit is working)
+            .route("/oauth", web::post().to(auth::oauth_handler))
             .service(
                 web::resource("/graphql")
                     .name("graphql")
@@ -75,7 +83,7 @@ async fn main() -> Result<()> {
     #[cfg(not(feature = "autoreload"))]
     {
         server = server.bind(addr)?;
-    }
+    } 
 
     Ok(server.run().await?)
 }
