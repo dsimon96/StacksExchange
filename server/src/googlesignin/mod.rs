@@ -1,16 +1,14 @@
 mod cache;
 pub mod googlesigninerror;
 
-use crate::googlesignin::cache::{Cache, Certificates};
+use crate::googlesignin::cache::{Cache, Certificates, HttpClient};
 use crate::googlesignin::googlesigninerror::GoogleSignInError;
-use hyper::client::{Client as HyperClient, HttpConnector};
+use hyper::client::Client as HyperClient;
 #[cfg(feature = "with-openssl")]
 use hyper_openssl::HttpsConnector;
 #[cfg(feature = "with-rustls")]
 use hyper_rustls::HttpsConnector;
 use serde::Deserialize;
-
-pub type HttpClient = HyperClient<HttpsConnector<HttpConnector>>;
 
 pub struct GoogleSignInClient {
     client: HttpClient,
