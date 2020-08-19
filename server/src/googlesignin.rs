@@ -5,16 +5,16 @@ use hyper::client::{Client as HyperClient, HttpConnector};
 use hyper_openssl::HttpsConnector;
 #[cfg(feature = "with-rustls")]
 use hyper_rustls::HttpsConnector;
+use serde::Deserialize;
 use std::collections::btree_map::Range;
 use std::collections::BTreeMap;
 use std::ops::{
     Bound,
     Bound::{Included, Unbounded},
 };
-use std::{fmt, io};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use serde::Deserialize;
+use std::{fmt, io};
 
 type HttpClient = HyperClient<HttpsConnector<HttpConnector>>;
 
@@ -185,7 +185,10 @@ impl Cache {
         }
     }
 
-    async fn get_cached_or_refresh(&self, client: &HttpClient) -> Result<Arc<Certificates>, GoogleSignInError> {
+    async fn get_cached_or_refresh(
+        &self,
+        client: &HttpClient,
+    ) -> Result<Arc<Certificates>, GoogleSignInError> {
         // Acquire a lock in order to clone the Arc to the currently cached certificates,
         // or initialize a new future but don't block on it until after releasing the lock.
         let fut = {
@@ -230,8 +233,9 @@ impl Cache {
     }
 }
 
-type Promise =
-    std::pin::Pin<Box<dyn std::future::Future<Output = Result<Arc<Certificates>, GoogleSignInError>>>>;
+type Promise = std::pin::Pin<
+    Box<dyn std::future::Future<Output = Result<Arc<Certificates>, GoogleSignInError>>>,
+>;
 
 enum RefreshState {
     Ready(Arc<Certificates>),
@@ -323,7 +327,10 @@ impl Certificates {
         }
     }
 
-    fn get_range<'a>(&'a self, kid: &Option<String>) -> Result<Range<'a, Key, Cert>, GoogleSignInError> {
+    fn get_range<'a>(
+        &'a self,
+        kid: &Option<String>,
+    ) -> Result<Range<'a, Key, Cert>, GoogleSignInError> {
         match kid {
             None => Ok(self
                 .keys
@@ -388,7 +395,9 @@ impl fmt::Display for GoogleSignInError {
             GoogleSignInError::InvalidKey => f.write_str("Token does not match any known key"),
             GoogleSignInError::InvalidToken => f.write_str("Token was not recognized by google"),
             GoogleSignInError::InvalidIssuer => f.write_str("Token was not issued by google"),
-            GoogleSignInError::InvalidAudience => f.write_str("Token is for a different google application"),
+            GoogleSignInError::InvalidAudience => {
+                f.write_str("Token is for a different google application")
+            }
             GoogleSignInError::InvalidHostedDomain => {
                 f.write_str("User is not a member of the hosted domain(s)")
             }

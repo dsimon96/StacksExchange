@@ -10,6 +10,7 @@ extern crate diesel;
 #[macro_use]
 extern crate log;
 
+use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
 use settings::Settings;
@@ -19,7 +20,6 @@ use std::{
     path::PathBuf,
 };
 use structopt::StructOpt;
-use actix_identity::{CookieIdentityPolicy, IdentityService};
 
 #[cfg(feature = "autoreload")]
 use listenfd::ListenFd;
@@ -53,9 +53,10 @@ async fn main() -> Result<()> {
             .wrap(middleware::Logger::default())
             .wrap(IdentityService::new(
                 // <- create identity middleware
-                CookieIdentityPolicy::new(&[0; 32])    // <- create cookie identity policy
-                      .name("stacksexchange-auth-cookie")
-                      .secure(false))) // TODO(change to true one shit is working)
+                CookieIdentityPolicy::new(&[0; 32]) // <- create cookie identity policy
+                    .name("stacksexchange-auth-cookie")
+                    .secure(false),
+            )) // TODO(change to true one shit is working)
             .route("/oauth", web::post().to(auth::oauth_handler))
             .service(
                 web::resource("/oauth")
@@ -91,7 +92,7 @@ async fn main() -> Result<()> {
     #[cfg(not(feature = "autoreload"))]
     {
         server = server.bind(addr)?;
-    } 
+    }
 
     Ok(server.run().await?)
 }
