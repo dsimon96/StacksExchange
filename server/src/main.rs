@@ -1,11 +1,14 @@
 mod app;
 mod auth;
 mod db;
+mod googlesignin;
 mod graphql;
 mod settings;
 
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate log;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
@@ -54,6 +57,11 @@ async fn main() -> Result<()> {
                       .name("stacksexchange-auth-cookie")
                       .secure(false))) // TODO(change to true one shit is working)
             .route("/oauth", web::post().to(auth::oauth_handler))
+            .service(
+                web::resource("/oauth")
+                    .name("oauth")
+                    .route(web::post().to(auth::oauth_handler)),
+            )
             .service(
                 web::resource("/graphql")
                     .name("graphql")

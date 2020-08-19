@@ -32,7 +32,7 @@ class App extends React.Component {
         </header>
         <div id="g_id_onload"
           data-client_id="962633347992-tbgvt8rcmnhdp5tlfm2hs1av8bkfc03n.apps.googleusercontent.com"
-          data-login_uri="https://localhost:8080/oauth">
+          data-login_uri="http://localhost:8080/oauth">
         </div>
       </div>
     );
