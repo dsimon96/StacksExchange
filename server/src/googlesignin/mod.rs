@@ -117,7 +117,7 @@ impl IdInfo {
         }
 
         // Check the token belongs to the hosted domain(s)
-        if !client.hosted_domains.is_empty() > 0 {
+        if !client.hosted_domains.is_empty() {
             match self.hd {
                 Some(ref domain) if client.hosted_domains.contains(domain) => {}
                 _ => {
