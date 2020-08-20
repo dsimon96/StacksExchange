@@ -10,7 +10,6 @@ extern crate diesel;
 #[macro_use]
 extern crate log;
 
-use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
 use settings::Settings;
@@ -49,15 +48,9 @@ async fn main() -> Result<()> {
     let mut server = HttpServer::new(move || {
         let app = App::new()
             .data(graphql::make_schema(settings.clone(), pool.clone()))
+            .data(settings.clone())
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
-            .wrap(IdentityService::new(
-                // <- create identity middleware
-                CookieIdentityPolicy::new(&[0; 32]) // <- create cookie identity policy
-                    .name("stacksexchange-auth-cookie")
-                    .secure(false),
-            )) // TODO(change to true one shit is working)
-            .route("/oauth", web::post().to(auth::oauth_handler))
             .service(
                 web::resource("/oauth")
                     .name("oauth")

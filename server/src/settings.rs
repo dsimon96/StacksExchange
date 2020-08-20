@@ -10,6 +10,7 @@ pub struct ServerSettings {
     pub listen_addr: String,
     pub listen_port: u16,
     pub name: String,
+    pub google_client_id: String,
 }
 
 /// Container for all config parameters
