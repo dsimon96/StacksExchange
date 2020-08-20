@@ -64,9 +64,10 @@ impl GoogleSignInClient {
                 &validation,
             )?;
 
-            token_data.claims.verify(self)?;
-
-            return Ok(token_data.claims);
+            let verification_result = token_data.claims.verify(self);
+            if verification_result.is_ok() {
+              return Ok(token_data.claims);
+            }
         }
 
         Err(GoogleSignInError::InvalidToken)
@@ -111,12 +112,12 @@ impl IdInfo {
         }
 
         // Check the token belongs to the application(s)
-        if client.audiences.len() > 0 && !client.audiences.contains(&self.aud) {
+        if !client.audiences.is_empty() && !client.audiences.contains(&self.aud) {
             return Err(GoogleSignInError::InvalidAudience);
         }
 
         // Check the token belongs to the hosted domain(s)
-        if client.hosted_domains.len() > 0 {
+        if !client.hosted_domains.is_empty() > 0 {
             match self.hd {
                 Some(ref domain) if client.hosted_domains.contains(domain) => {}
                 _ => {
