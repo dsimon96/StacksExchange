@@ -4,9 +4,6 @@ pub mod googlesigninerror;
 use crate::googlesignin::cache::{Cache, Certificates, HttpClient};
 use crate::googlesignin::googlesigninerror::GoogleSignInError;
 use hyper::client::Client as HyperClient;
-#[cfg(feature = "with-openssl")]
-use hyper_openssl::HttpsConnector;
-#[cfg(feature = "with-rustls")]
 use hyper_rustls::HttpsConnector;
 use serde::Deserialize;
 
@@ -19,10 +16,7 @@ pub struct GoogleSignInClient {
 
 impl GoogleSignInClient {
     pub fn new() -> GoogleSignInClient {
-        #[cfg(feature = "with-rustls")]
         let ssl = HttpsConnector::new();
-        #[cfg(feature = "with-openssl")]
-        let ssl = HttpsConnector::new().expect("unable to build HttpsConnector");
         let client = HyperClient::builder()
             .http1_max_buf_size(0x2000)
             .pool_max_idle_per_host(0)

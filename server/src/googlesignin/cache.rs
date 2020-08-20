@@ -2,9 +2,6 @@ use crate::googlesignin::googlesigninerror::GoogleSignInError;
 use bytes::buf::ext::BufExt;
 use futures::future::{FutureExt, Shared};
 use hyper::client::{Client as HyperClient, HttpConnector};
-#[cfg(feature = "with-openssl")]
-use hyper_openssl::HttpsConnector;
-#[cfg(feature = "with-rustls")]
 use hyper_rustls::HttpsConnector;
 use serde::Deserialize;
 use std::collections::btree_map::Range;

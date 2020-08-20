@@ -21,8 +21,7 @@ diesel-derive-enum = { version = "1", features = [ "postgres" ]}
 dotenv = "0.15"
 futures = "0.3.4"
 hyper = "^0.13"
-hyper-rustls = { version = "^0.19", optional = true }
-hyper-openssl = { version = "^0.8", optional = true }
+hyper-rustls = { version = "^0.19"}
 jsonwebtoken = "^7"
 listenfd = { version = "0.3", optional = true }
 log = "0.4"
@@ -36,6 +35,3 @@ uuid = { version = "0.8", features = [ "v4" ] }
 [features]
 autoreload = ["listenfd"]
 graphiql = []
-default = ["with-rustls"]
-with-rustls = ["hyper-rustls"]
-with-openssl = ["hyper-openssl"]
