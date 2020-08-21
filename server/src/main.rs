@@ -1,10 +1,14 @@
 mod app;
+mod auth;
 mod db;
+mod googlesignin;
 mod graphql;
 mod settings;
 
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate log;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
@@ -44,8 +48,14 @@ async fn main() -> Result<()> {
     let mut server = HttpServer::new(move || {
         let app = App::new()
             .data(graphql::make_schema(settings.clone(), pool.clone()))
+            .data(settings.clone())
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
+            .service(
+                web::resource("/oauth")
+                    .name("oauth")
+                    .route(web::post().to(auth::oauth_handler)),
+            )
             .service(
                 web::resource("/graphql")
                     .name("graphql")
