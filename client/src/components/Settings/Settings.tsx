@@ -1,0 +1,7 @@
+import React from 'react';
+
+export default class Settings extends React.Component {
+    render(): JSX.Element {
+        return <div>Update your settings here.</div>;
+    }
+}
