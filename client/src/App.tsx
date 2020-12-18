@@ -1,18 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import logo from './logo.svg';
-import NavigationBar from './components/Navigation/NavigationBar';
+import { NavigationBar } from './components/Navigation/NavigationBar';
 
-class App extends React.Component {
+export const App: React.FC = () => {
+    useEffect(() => {
+      const script = document.createElement("script");
+      script.async = true;
+      script.defer = true;
+      script.src = "https://accounts.google.com/gsi/client";
+      document.body.appendChild(script);
+    }, [] /* An empty dependencies array means that we will only update one time. */);
 
-  componentDidMount() {
-    const script = document.createElement("script");
-    script.async = true;
-    script.defer = true;
-    script.src = "https://accounts.google.com/gsi/client";
-    document.body.appendChild(script)
-  }
-
-  render() {
     return (
       <div className="App">
         <header>
@@ -26,7 +24,4 @@ class App extends React.Component {
         <NavigationBar />
       </div>
     );
-  }
 }
-
-export default App;
