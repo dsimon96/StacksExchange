@@ -1,7 +1,5 @@
 import React from 'react';
 
-export default class Transactions extends React.Component {
-    render(): JSX.Element {
-        return <div>See your transactions here.</div>;
-    }
+export const Transactions: React.FC = () => {
+    return <div>See your transactions here.</div>;
 }
