@@ -1,17 +1,17 @@
 pub mod edges;
 pub mod mutations;
 pub mod nodes;
+
 mod mutation_root;
 mod page_info;
 mod query_root;
 
-use crate::db;
-use crate::settings::Settings;
-use async_graphql::EmptySubscription;
-
 pub use mutation_root::*;
 pub use page_info::*;
 pub use query_root::*;
+
+use crate::{db, settings::Settings};
+use async_graphql::EmptySubscription;
 
 pub type Schema = async_graphql::Schema<QueryRoot, MutationRoot, EmptySubscription>;
 

@@ -1,5 +1,4 @@
-use crate::graphql::PageInfo;
-use crate::graphql::nodes::Person;
+use super::super::{nodes::Person, PageInfo};
 
 #[async_graphql::SimpleObject]
 pub struct SquadMemberEdge {

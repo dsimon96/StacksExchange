@@ -1,6 +1,13 @@
-use crate::db::{self, models, schema::{node, person_squad_connection, squad}};
+use super::super::{
+    edges::{PersonSquadConnection, PersonSquadEdge},
+    PageInfo,
+};
+use crate::db::{
+    models,
+    schema::{node, person, person_squad_connection, squad},
+    Pool,
+};
 use async_graphql::{Context, FieldError, FieldResult};
-use crate::graphql::{PageInfo, edges::{PersonSquadConnection, PersonSquadEdge}};
 use diesel::prelude::*;
 use tokio_diesel::*;
 
@@ -43,7 +50,7 @@ impl Person {
         node::table
             .inner_join(squad::table)
             .filter(squad::id.eq(any(squad_ids)))
-            .load_async::<models::Squad>(context.data::<db::Pool>())
+            .load_async::<models::Squad>(context.data::<Pool>())
             .await
             .map(|squads| PersonSquadConnection {
                 edges: squads
@@ -61,5 +68,16 @@ impl Person {
                 },
             })
             .or_else(|_e| Err(FieldError::from("Internal error")))
+    }
+}
+
+impl Person {
+    pub async fn resolve_email(pool: &Pool, email: String) -> AsyncResult<Person> {
+        node::table
+            .inner_join(person::table)
+            .filter(person::email.eq(email))
+            .get_result_async::<models::Person>(pool)
+            .await
+            .map(|person| person.into())
     }
 }

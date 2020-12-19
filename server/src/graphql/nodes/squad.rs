@@ -1,6 +1,13 @@
-use crate::db::{self, models, schema::{node, person, person_squad_connection}};
+use super::super::{
+    edges::{SquadMemberConnection, SquadMemberEdge},
+    PageInfo,
+};
+use crate::db::{
+    models,
+    schema::{node, person, person_squad_connection},
+    Pool,
+};
 use async_graphql::{Context, FieldError, FieldResult};
-use crate::graphql::{PageInfo, edges::{SquadMemberConnection, SquadMemberEdge}};
 use diesel::prelude::*;
 use tokio_diesel::*;
 
@@ -34,7 +41,7 @@ impl Squad {
         node::table
             .inner_join(person::table)
             .filter(person::id.eq(any(person_ids)))
-            .load_async::<models::Person>(context.data::<db::Pool>())
+            .load_async::<models::Person>(context.data::<Pool>())
             .await
             .map(|people| SquadMemberConnection {
                 edges: people
