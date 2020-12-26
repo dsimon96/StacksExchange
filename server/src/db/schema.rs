@@ -22,6 +22,7 @@ table! {
         id -> Int4,
         person_id -> Int4,
         squad_id -> Int4,
+        balance_cents -> Int4,
     }
 }
 

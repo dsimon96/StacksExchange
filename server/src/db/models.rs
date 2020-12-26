@@ -77,6 +77,7 @@ pub struct PersonSquadConnection {
     pub id: i32,
     pub person_id: i32,
     pub squad_id: i32,
+    pub balance_cents: i32,
 }
 
 #[derive(Insertable)]

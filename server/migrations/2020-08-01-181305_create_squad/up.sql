@@ -7,7 +7,8 @@ CREATE TABLE squad (
 CREATE TABLE person_squad_connection (
     id SERIAL PRIMARY KEY,
     person_id INTEGER NOT NULL REFERENCES person(id) ON DELETE CASCADE,
-    squad_id INTEGER NOT NULL REFERENCES squad(id) ON DELETE CASCADE
+    squad_id INTEGER NOT NULL REFERENCES squad(id) ON DELETE CASCADE,
+    UNIQUE(person_id, squad_id)
 );
 CREATE INDEX ON squad ( node_id );
 CREATE INDEX ON person_squad_connection ( person_id, id, squad_id );

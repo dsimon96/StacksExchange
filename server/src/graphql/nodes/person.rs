@@ -1,10 +1,7 @@
-use super::super::{
-    edges::{PersonSquadConnection, PersonSquadEdge},
-    PageInfo,
-};
+use super::super::edges::PersonSquadConnection;
 use crate::db::{
     models,
-    schema::{node, person, person_squad_connection, squad},
+    schema::{node, person},
     Pool,
 };
 use async_graphql::{Context, FieldError, FieldResult};
@@ -41,32 +38,8 @@ impl Person {
     }
 
     pub async fn squads(&self, context: &Context<'_>) -> FieldResult<PersonSquadConnection> {
-        use diesel::expression::dsl::any;
-
-        let squad_ids = person_squad_connection::table
-            .filter(person_squad_connection::person_id.eq(self.model.detail.id))
-            .select(person_squad_connection::squad_id);
-
-        node::table
-            .inner_join(squad::table)
-            .filter(squad::id.eq(any(squad_ids)))
-            .load_async::<models::Squad>(context.data::<Pool>())
+        PersonSquadConnection::resolve_for_person(context.data::<Pool>(), self.model.detail.id)
             .await
-            .map(|squads| PersonSquadConnection {
-                edges: squads
-                    .into_iter()
-                    .map(|squad| PersonSquadEdge {
-                        cursor: String::from(""),
-                        node: squad.into(),
-                    })
-                    .collect(),
-                page_info: PageInfo {
-                    has_next_page: false,
-                    has_previous_page: false,
-                    start_cursor: String::from(""),
-                    end_cursor: String::from(""),
-                },
-            })
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }
 }
