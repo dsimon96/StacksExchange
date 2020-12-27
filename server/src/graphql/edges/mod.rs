@@ -1,5 +1,5 @@
-mod person_squad;
-mod squad_member;
+mod person_balance;
+mod squad_balance;
 
-pub use person_squad::*;
-pub use squad_member::*;
+pub use person_balance::*;
+pub use squad_balance::*;

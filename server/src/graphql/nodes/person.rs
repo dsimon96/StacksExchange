@@ -1,4 +1,4 @@
-use super::super::edges::PersonSquadConnection;
+use super::super::edges::PersonBalanceConnection;
 use crate::db::{
     models,
     schema::{node, person},
@@ -37,18 +37,27 @@ impl Person {
         &self.model.detail.last_name
     }
 
-    pub async fn squads(&self, context: &Context<'_>) -> FieldResult<PersonSquadConnection> {
-        PersonSquadConnection::resolve_for_person(context.data::<Pool>(), self.model.detail.id)
+    pub async fn balances(&self, context: &Context<'_>) -> FieldResult<PersonBalanceConnection> {
+        PersonBalanceConnection::by_person_id(context.data::<Pool>(), self.model.detail.id)
             .await
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }
 }
 
 impl Person {
-    pub async fn resolve_email(pool: &Pool, email: String) -> AsyncResult<Person> {
+    pub async fn by_email(pool: &Pool, email: String) -> AsyncResult<Person> {
         node::table
             .inner_join(person::table)
             .filter(person::email.eq(email))
+            .get_result_async::<models::Person>(pool)
+            .await
+            .map(|person| person.into())
+    }
+
+    pub async fn by_id(pool: &Pool, id: i32) -> AsyncResult<Person> {
+        node::table
+            .inner_join(person::table)
+            .filter(person::id.eq(id))
             .get_result_async::<models::Person>(pool)
             .await
             .map(|person| person.into())

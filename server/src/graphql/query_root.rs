@@ -13,7 +13,7 @@ impl QueryRoot {
         context: &Context<'_>,
         #[arg(validator(Email))] email: String,
     ) -> FieldResult<Person> {
-        Person::resolve_email(context.data::<Pool>(), email)
+        Person::by_email(context.data::<Pool>(), email)
             .await
             .or_else(|_e| {
                 Err(FieldError::from(
@@ -25,7 +25,7 @@ impl QueryRoot {
     pub async fn node(&self, context: &Context<'_>, id: ID) -> FieldResult<Node> {
         let uid = Uuid::parse_str(&id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
-        Node::resolve_id(context.data::<Pool>(), uid)
+        Node::by_uid(context.data::<Pool>(), uid)
             .await
             .or_else(|_e| Err(FieldError::from("Could not find a node with the given id")))
     }

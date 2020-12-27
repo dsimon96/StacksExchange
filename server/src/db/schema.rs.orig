@@ -11,7 +11,7 @@ table! {
     node (id) {
         id -> Int4,
         uid -> Uuid,
-        node_type -> crate::db::models::NodeTypeMapping,
+        node_type -> Node_type,
     }
 }
 
