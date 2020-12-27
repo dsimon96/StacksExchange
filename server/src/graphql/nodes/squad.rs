@@ -1,4 +1,4 @@
-use super::super::edges::SquadBalanceConnection;
+use super::super::edges::{SquadBalanceConnection, SquadTransactionConnection};
 use crate::db::{
     models,
     schema::{node, squad},
@@ -30,6 +30,15 @@ impl Squad {
 
     pub async fn balances(&self, context: &Context<'_>) -> FieldResult<SquadBalanceConnection> {
         SquadBalanceConnection::by_squad_id(context.data::<Pool>(), self.model.detail.id)
+            .await
+            .or_else(|_e| Err(FieldError::from("Internal error")))
+    }
+
+    pub async fn transactions(
+        &self,
+        context: &Context<'_>,
+    ) -> FieldResult<SquadTransactionConnection> {
+        SquadTransactionConnection::by_squad_id(context.data::<Pool>(), self.model.detail.id)
             .await
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }

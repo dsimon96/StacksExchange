@@ -1,7 +1,7 @@
-use super::{Balance, Person, Squad};
+use super::{Balance, Person, Squad, Transaction};
 use crate::db::{
     models,
-    schema::{balance, node, person, squad},
+    schema::{balance, node, person, squad, txn},
     Pool,
 };
 use diesel::prelude::*;
@@ -13,6 +13,7 @@ pub enum Node {
     Person(Person),
     Squad(Squad),
     Balance(Balance),
+    Transaction(Transaction),
 }
 
 impl Node {
@@ -48,6 +49,15 @@ impl Node {
 
                     Ok(Node::Balance(Balance {
                         model: models::Balance { node, detail }.into(),
+                    }))
+                }
+                models::NodeType::Txn => {
+                    let detail = txn::table
+                        .filter(txn::node_id.eq(node.id))
+                        .get_result::<models::TransactionDetail>(conn)?;
+
+                    Ok(Node::Transaction(Transaction {
+                        model: models::Transaction { node, detail }.into(),
                     }))
                 }
             }

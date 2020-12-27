@@ -1,4 +1,4 @@
-use super::schema::{balance, node, person, squad};
+use super::schema::{balance, node, person, squad, txn, txn_part};
 use diesel_derive_enum::DbEnum;
 use uuid::Uuid;
 
@@ -7,6 +7,7 @@ pub enum NodeType {
     Person,
     Squad,
     Balance,
+    Txn,
 }
 
 #[derive(Queryable, Identifiable)]
@@ -93,4 +94,42 @@ pub struct NewBalance {
     pub node_id: i32,
     pub person_id: i32,
     pub squad_id: i32,
+}
+
+#[derive(Queryable, Identifiable)]
+#[table_name = "txn"]
+pub struct TransactionDetail {
+    pub id: i32,
+    pub node_id: i32,
+    pub squad_id: i32,
+}
+
+#[derive(Queryable)]
+pub struct Transaction {
+    pub node: Node,
+    pub detail: TransactionDetail,
+}
+
+#[derive(Insertable)]
+#[table_name = "txn"]
+pub struct NewTransaction {
+    pub node_id: i32,
+    pub squad_id: i32,
+}
+
+#[derive(Queryable, Identifiable)]
+#[table_name = "txn_part"]
+pub struct TransactionPart {
+    pub id: i32,
+    pub txn_id: i32,
+    pub balance_id: i32,
+    pub balance_change_cents: i32,
+}
+
+#[derive(Insertable)]
+#[table_name = "txn_part"]
+pub struct NewTransactionPart {
+    pub txn_id: i32,
+    pub balance_id: i32,
+    pub balance_change_cents: i32,
 }

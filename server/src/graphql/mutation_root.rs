@@ -40,4 +40,14 @@ impl MutationRoot {
             .await
             .or_else(|_e| Err(FieldError::from("Failed to add person to squad")))
     }
+
+    async fn new_transaction(
+        &self,
+        context: &Context<'_>,
+        input: NewTransactionInput,
+    ) -> FieldResult<NewTransactionPayload> {
+        new_transaction(context.data::<Pool>(), input.try_into()?)
+            .await
+            .or_else(|_e| Err(FieldError::from("Failed to add transaction")))
+    }
 }
