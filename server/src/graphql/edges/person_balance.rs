@@ -7,13 +7,13 @@ use crate::db::{
 use diesel::prelude::*;
 use tokio_diesel::*;
 
-#[async_graphql::SimpleObject]
+#[derive(async_graphql::SimpleObject)]
 pub struct PersonBalanceEdge {
     pub cursor: String,
     pub node: Balance,
 }
 
-#[async_graphql::SimpleObject]
+#[derive(async_graphql::SimpleObject)]
 pub struct PersonBalanceConnection {
     pub edges: Vec<PersonBalanceEdge>,
     pub page_info: PageInfo,

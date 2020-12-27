@@ -28,7 +28,7 @@ impl Balance {
         let sum = txn_part::table
             .filter(txn_part::balance_id.eq(self.model.detail.id))
             .select(sum(txn_part::balance_change_cents))
-            .get_result_async::<Option<i64>>(context.data::<Pool>())
+            .get_result_async::<Option<i64>>(context.data::<Pool>().unwrap())
             .await?;
 
         Ok(sum
@@ -37,13 +37,13 @@ impl Balance {
     }
 
     pub async fn person(&self, context: &Context<'_>) -> FieldResult<Person> {
-        Person::by_id(context.data::<Pool>(), self.model.detail.person_id)
+        Person::by_id(context.data::<Pool>().unwrap(), self.model.detail.person_id)
             .await
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }
 
     pub async fn squad(&self, context: &Context<'_>) -> FieldResult<Squad> {
-        Squad::by_id(context.data::<Pool>(), self.model.detail.squad_id)
+        Squad::by_id(context.data::<Pool>().unwrap(), self.model.detail.squad_id)
             .await
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }
@@ -52,7 +52,7 @@ impl Balance {
         &self,
         context: &Context<'_>,
     ) -> FieldResult<BalanceTransactionConnection> {
-        BalanceTransactionConnection::by_balance_id(context.data::<Pool>(), self.model.detail.id)
+        BalanceTransactionConnection::by_balance_id(context.data::<Pool>().unwrap(), self.model.detail.id)
             .await
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }

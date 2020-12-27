@@ -38,7 +38,7 @@ impl Person {
     }
 
     pub async fn balances(&self, context: &Context<'_>) -> FieldResult<PersonBalanceConnection> {
-        PersonBalanceConnection::by_person_id(context.data::<Pool>(), self.model.detail.id)
+        PersonBalanceConnection::by_person_id(context.data::<Pool>().unwrap(), self.model.detail.id)
             .await
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }

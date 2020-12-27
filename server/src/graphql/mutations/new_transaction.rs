@@ -18,30 +18,32 @@ use uuid::Uuid;
 struct ChangesSumToZero {}
 
 impl InputValueValidator for ChangesSumToZero {
-    fn is_valid(&self, value: &Value) -> Option<String> {
+    fn is_valid(&self, value: &Value) -> Result<(), String> {
         if let Value::List(v) = value {
             let mut sum = 0;
             for detail in v {
                 if let Value::Object(o) = detail {
-                    if let Some(Value::Int(n)) = o.get("changeCents") {
-                        sum += n
+                    if let Some(Value::Number(n)) = o.get("changeCents") {
+                        if let Some(i) = n.as_i64().and_then(|x| i32::try_from(x).ok()) {
+                            sum += i
+                        }
                     }
                 }
             }
 
             if sum != 0 {
-                return Some(String::from("Changes must add up to zero"));
+                return Err(String::from("Changes must add up to zero"));
             }
         }
 
-        None
+        Ok(())
     }
 }
 
-#[async_graphql::InputObject]
+#[derive(async_graphql::InputObject)]
 pub struct BalanceChangeDetail {
     pub balance_id: ID,
-    #[field(validator(IntNonZero))]
+    #[graphql(validator(IntNonZero))]
     pub change_cents: i32,
 }
 
@@ -64,10 +66,10 @@ impl TryFrom<BalanceChangeDetail> for ParsedBalanceChangeDetail {
     }
 }
 
-#[async_graphql::InputObject]
+#[derive(async_graphql::InputObject)]
 pub struct NewTransactionInput {
     pub squad_id: ID,
-    #[field(validator(and(ListMinLength(length = "1"), ChangesSumToZero)))]
+    #[graphql(validator(and(ListMinLength(length = "1"), ChangesSumToZero)))]
     pub balance_changes_detail: Vec<BalanceChangeDetail>,
 }
 
@@ -98,7 +100,7 @@ impl TryFrom<NewTransactionInput> for ParsedNewTransactionInput {
     }
 }
 
-#[async_graphql::SimpleObject]
+#[derive(async_graphql::SimpleObject)]
 pub struct NewTransactionPayload {
     pub squad: Squad,
     pub transaction: Transaction,

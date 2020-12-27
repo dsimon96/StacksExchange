@@ -1,11 +1,11 @@
 use crate::graphql::Schema;
 use actix_web::{web, HttpResponse};
 use async_graphql::http::{graphiql_source, playground_source, GraphQLPlaygroundConfig};
-use async_graphql_actix_web::{GQLRequest, GQLResponse};
+use async_graphql_actix_web::{Request, Response};
 
 /// Handler to execute a GraphQL request (either a query or a mutation)
-pub async fn graphql(schema: web::Data<Schema>, req: GQLRequest) -> GQLResponse {
-    req.into_inner().execute(&schema).await.into()
+pub async fn graphql(schema: web::Data<Schema>, req: Request) -> Response {
+    schema.execute(req.into_inner()).await.into()
 }
 
 /// Handler to provide graphiql for debuggability. Only exposed when compiled

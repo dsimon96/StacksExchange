@@ -19,7 +19,7 @@ impl Transaction {
     }
 
     pub async fn squad(&self, context: &Context<'_>) -> FieldResult<Squad> {
-        Squad::by_id(context.data::<Pool>(), self.model.detail.squad_id)
+        Squad::by_id(context.data::<Pool>().unwrap(), self.model.detail.squad_id)
             .await
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }
@@ -29,7 +29,7 @@ impl Transaction {
         context: &Context<'_>,
     ) -> FieldResult<TransactionBalanceConnection> {
         TransactionBalanceConnection::by_transaction_id(
-            context.data::<Pool>(),
+            context.data::<Pool>().unwrap(),
             self.model.detail.id,
         )
         .await

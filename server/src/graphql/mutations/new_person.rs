@@ -9,16 +9,16 @@ use diesel::prelude::*;
 use tokio_diesel::*;
 use uuid::Uuid;
 
-#[async_graphql::InputObject]
+#[derive(async_graphql::InputObject)]
 pub struct NewPersonInput {
-    #[field(validator(Email))]
+    #[graphql(validator(Email))]
     pub email: String,
     pub display_name: String,
     pub first_name: String,
     pub last_name: String,
 }
 
-#[async_graphql::SimpleObject]
+#[derive(async_graphql::SimpleObject)]
 pub struct NewPersonPayload {
     pub person: Person,
 }
