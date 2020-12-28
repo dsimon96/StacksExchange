@@ -11,9 +11,9 @@ impl QueryRoot {
     pub async fn person_by_email(
         &self,
         context: &Context<'_>,
-        #[arg(validator(Email))] email: String,
+        #[graphql(validator(Email))] email: String,
     ) -> FieldResult<Person> {
-        Person::by_email(context.data::<Pool>(), email)
+        Person::by_email(context.data::<Pool>().unwrap(), email)
             .await
             .or_else(|_e| {
                 Err(FieldError::from(
@@ -25,7 +25,7 @@ impl QueryRoot {
     pub async fn node(&self, context: &Context<'_>, id: ID) -> FieldResult<Node> {
         let uid = Uuid::parse_str(&id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
-        Node::by_uid(context.data::<Pool>(), uid)
+        Node::by_uid(context.data::<Pool>().unwrap(), uid)
             .await
             .or_else(|_e| Err(FieldError::from("Could not find a node with the given id")))
     }

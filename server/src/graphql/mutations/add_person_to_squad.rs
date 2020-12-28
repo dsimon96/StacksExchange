@@ -11,7 +11,7 @@ use std::convert::TryFrom;
 use tokio_diesel::*;
 use uuid::Uuid;
 
-#[async_graphql::InputObject]
+#[derive(async_graphql::InputObject)]
 pub struct AddPersonToSquadInput {
     pub person_id: ID,
     pub squad_id: ID,
@@ -38,7 +38,7 @@ impl TryFrom<AddPersonToSquadInput> for ParsedAddPersonToSquadInput {
     }
 }
 
-#[async_graphql::SimpleObject]
+#[derive(async_graphql::SimpleObject)]
 pub struct AddPersonToSquadPayload {
     pub balance: Balance,
     pub person: Person,

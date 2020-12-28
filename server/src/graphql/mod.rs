@@ -19,11 +19,11 @@ pub fn make_schema(settings: Settings, pool: db::Pool) -> Schema {
     let mut builder = Schema::build(QueryRoot {}, MutationRoot {}, EmptySubscription {})
         .data(settings)
         .data(pool)
-        .extension(|| async_graphql::extensions::Logger::default());
+        .extension(async_graphql::extensions::Logger);
 
     #[cfg(feature = "graphiql")]
     {
-        builder = builder.extension(|| async_graphql::extensions::ApolloTracing::default());
+        builder = builder.extension(async_graphql::extensions::ApolloTracing)
     }
 
     #[cfg(not(feature = "graphiql"))]

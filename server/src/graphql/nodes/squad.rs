@@ -29,7 +29,7 @@ impl Squad {
     }
 
     pub async fn balances(&self, context: &Context<'_>) -> FieldResult<SquadBalanceConnection> {
-        SquadBalanceConnection::by_squad_id(context.data::<Pool>(), self.model.detail.id)
+        SquadBalanceConnection::by_squad_id(context.data::<Pool>().unwrap(), self.model.detail.id)
             .await
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }
@@ -38,7 +38,7 @@ impl Squad {
         &self,
         context: &Context<'_>,
     ) -> FieldResult<SquadTransactionConnection> {
-        SquadTransactionConnection::by_squad_id(context.data::<Pool>(), self.model.detail.id)
+        SquadTransactionConnection::by_squad_id(context.data::<Pool>().unwrap(), self.model.detail.id)
             .await
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }

@@ -8,7 +8,8 @@ use diesel::prelude::*;
 use tokio_diesel::*;
 use uuid::Uuid;
 
-#[async_graphql::Interface(field(name = "id", type = "String"))]
+#[derive(async_graphql::Interface)]
+#[graphql(field(name = "id", type = "String"))]
 pub enum Node {
     Person(Person),
     Squad(Squad),
