@@ -4,6 +4,7 @@ use crate::db::{
     schema::{node, txn, txn_part},
     Pool,
 };
+use async_graphql::Result;
 use diesel::prelude::*;
 use tokio_diesel::*;
 
@@ -24,8 +25,8 @@ impl BalanceTransactionConnection {
     pub async fn by_balance_id(
         pool: &Pool,
         balance_id: i32,
-    ) -> AsyncResult<BalanceTransactionConnection> {
-        txn_part::table
+    ) -> Result<BalanceTransactionConnection> {
+        Ok(txn_part::table
             .filter(txn_part::balance_id.eq(balance_id))
             .inner_join(
                 node::table
@@ -49,6 +50,6 @@ impl BalanceTransactionConnection {
                     start_cursor: String::from(""),
                     end_cursor: String::from(""),
                 },
-            })
+            })?)
     }
 }
