@@ -57,7 +57,7 @@ impl TryFrom<BalanceChangeDetail> for ParsedBalanceChangeDetail {
 
     fn try_from(value: BalanceChangeDetail) -> FieldResult<ParsedBalanceChangeDetail> {
         let balance_uid =
-            Uuid::parse_str(&value.balance_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+            Uuid::try_from(value.balance_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
         Ok(ParsedBalanceChangeDetail {
             balance_uid,
@@ -83,7 +83,7 @@ impl TryFrom<NewTransactionInput> for ParsedNewTransactionInput {
 
     fn try_from(value: NewTransactionInput) -> FieldResult<ParsedNewTransactionInput> {
         let squad_uid =
-            Uuid::parse_str(&value.squad_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+            Uuid::try_from(value.squad_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
         Ok(ParsedNewTransactionInput {
             squad_uid,

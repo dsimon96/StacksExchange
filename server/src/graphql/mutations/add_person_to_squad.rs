@@ -27,9 +27,9 @@ impl TryFrom<AddPersonToSquadInput> for ParsedAddPersonToSquadInput {
 
     fn try_from(value: AddPersonToSquadInput) -> FieldResult<ParsedAddPersonToSquadInput> {
         let person_uid =
-            Uuid::parse_str(&value.person_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+            Uuid::try_from(value.person_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
         let squad_uid =
-            Uuid::parse_str(&value.squad_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+            Uuid::try_from(value.squad_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
         Ok(ParsedAddPersonToSquadInput {
             person_uid,

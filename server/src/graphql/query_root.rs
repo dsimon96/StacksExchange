@@ -1,6 +1,7 @@
 use super::nodes::{Node, Person};
 use crate::db::Pool;
 use async_graphql::{validators::Email, Context, FieldError, FieldResult, ID};
+use std::convert::TryFrom;
 use uuid::Uuid;
 
 /// Schema entry-point for queries
@@ -23,7 +24,7 @@ impl QueryRoot {
     }
 
     pub async fn node(&self, context: &Context<'_>, id: ID) -> FieldResult<Node> {
-        let uid = Uuid::parse_str(&id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+        let uid = Uuid::try_from(id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
 
         Node::by_uid(context.data::<Pool>().unwrap(), uid)
             .await
