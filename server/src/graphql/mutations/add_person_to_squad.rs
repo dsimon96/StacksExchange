@@ -1,7 +1,7 @@
-use super::super::nodes::{Person, Squad};
+use super::super::nodes::{Balance, Person, Squad};
 use crate::db::{
     models,
-    schema::{node, person, person_squad_connection, squad},
+    schema::{balance, node, person, squad},
     Pool,
 };
 use anyhow::Result;
@@ -11,7 +11,7 @@ use std::convert::TryFrom;
 use tokio_diesel::*;
 use uuid::Uuid;
 
-#[async_graphql::InputObject]
+#[derive(async_graphql::InputObject)]
 pub struct AddPersonToSquadInput {
     pub person_id: ID,
     pub squad_id: ID,
@@ -38,8 +38,9 @@ impl TryFrom<AddPersonToSquadInput> for ParsedAddPersonToSquadInput {
     }
 }
 
-#[async_graphql::SimpleObject]
+#[derive(async_graphql::SimpleObject)]
 pub struct AddPersonToSquadPayload {
+    pub balance: Balance,
     pub person: Person,
     pub squad: Squad,
 }
@@ -60,16 +61,30 @@ pub async fn add_person_to_squad(
                 .filter(node::uid.eq(input.squad_uid))
                 .get_result::<models::Squad>(conn)?;
 
-            let new_person_squad_connection = models::NewPersonSquadConnection {
+            let new_node = models::NewNode {
+                uid: Uuid::new_v4(),
+                node_type: models::NodeType::Balance,
+            };
+
+            let node = diesel::insert_into(node::table)
+                .values(new_node)
+                .get_result::<models::Node>(conn)?;
+
+            let new_balance = models::NewBalance {
+                node_id: node.id,
                 person_id: person.detail.id,
                 squad_id: squad.detail.id,
             };
 
-            diesel::insert_into(person_squad_connection::table)
-                .values(&new_person_squad_connection)
-                .execute(conn)?;
+            let balance = diesel::insert_into(balance::table)
+                .values(&new_balance)
+                .get_result::<models::BalanceDetail>(conn)
+                .map(|detail| Balance {
+                    model: models::Balance { node, detail },
+                })?;
 
             Ok(AddPersonToSquadPayload {
+                balance: balance.into(),
                 person: person.into(),
                 squad: squad.into(),
             })

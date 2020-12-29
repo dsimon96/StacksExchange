@@ -11,7 +11,7 @@ table! {
     node (id) {
         id -> Int4,
         uid -> Uuid,
-        node_type -> crate::db::models::NodeTypeMapping,
+        node_type -> Node_type,
     }
 }
 
@@ -61,4 +61,11 @@ joinable!(txn -> squad (squad_id));
 joinable!(txn_part -> balance (balance_id));
 joinable!(txn_part -> txn (txn_id));
 
-allow_tables_to_appear_in_same_query!(balance, node, person, squad, txn, txn_part,);
+allow_tables_to_appear_in_same_query!(
+    balance,
+    node,
+    person,
+    squad,
+    txn,
+    txn_part,
+);

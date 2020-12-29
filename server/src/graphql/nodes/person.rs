@@ -1,10 +1,7 @@
-use super::super::{
-    edges::{PersonSquadConnection, PersonSquadEdge},
-    PageInfo,
-};
+use super::super::edges::PersonBalanceConnection;
 use crate::db::{
     models,
-    schema::{node, person, person_squad_connection, squad},
+    schema::{node, person},
     Pool,
 };
 use async_graphql::{Context, FieldError, FieldResult};
@@ -40,42 +37,27 @@ impl Person {
         &self.model.detail.last_name
     }
 
-    pub async fn squads(&self, context: &Context<'_>) -> FieldResult<PersonSquadConnection> {
-        use diesel::expression::dsl::any;
-
-        let squad_ids = person_squad_connection::table
-            .filter(person_squad_connection::person_id.eq(self.model.detail.id))
-            .select(person_squad_connection::squad_id);
-
-        node::table
-            .inner_join(squad::table)
-            .filter(squad::id.eq(any(squad_ids)))
-            .load_async::<models::Squad>(context.data::<Pool>())
+    pub async fn balances(&self, context: &Context<'_>) -> FieldResult<PersonBalanceConnection> {
+        PersonBalanceConnection::by_person_id(context.data::<Pool>().unwrap(), self.model.detail.id)
             .await
-            .map(|squads| PersonSquadConnection {
-                edges: squads
-                    .into_iter()
-                    .map(|squad| PersonSquadEdge {
-                        cursor: String::from(""),
-                        node: squad.into(),
-                    })
-                    .collect(),
-                page_info: PageInfo {
-                    has_next_page: false,
-                    has_previous_page: false,
-                    start_cursor: String::from(""),
-                    end_cursor: String::from(""),
-                },
-            })
             .or_else(|_e| Err(FieldError::from("Internal error")))
     }
 }
 
 impl Person {
-    pub async fn resolve_email(pool: &Pool, email: String) -> AsyncResult<Person> {
+    pub async fn by_email(pool: &Pool, email: String) -> AsyncResult<Person> {
         node::table
             .inner_join(person::table)
             .filter(person::email.eq(email))
+            .get_result_async::<models::Person>(pool)
+            .await
+            .map(|person| person.into())
+    }
+
+    pub async fn by_id(pool: &Pool, id: i32) -> AsyncResult<Person> {
+        node::table
+            .inner_join(person::table)
+            .filter(person::id.eq(id))
             .get_result_async::<models::Person>(pool)
             .await
             .map(|person| person.into())

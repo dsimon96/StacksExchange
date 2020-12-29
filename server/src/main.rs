@@ -7,8 +7,6 @@ mod settings;
 
 #[macro_use]
 extern crate diesel;
-#[macro_use]
-extern crate log;
 
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;

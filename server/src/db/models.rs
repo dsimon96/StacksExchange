@@ -1,4 +1,4 @@
-use super::schema::{node, person, person_squad_connection, squad};
+use super::schema::{balance, node, person, squad, txn, txn_part};
 use diesel_derive_enum::DbEnum;
 use uuid::Uuid;
 
@@ -6,6 +6,8 @@ use uuid::Uuid;
 pub enum NodeType {
     Person,
     Squad,
+    Balance,
+    Txn,
 }
 
 #[derive(Queryable, Identifiable)]
@@ -71,17 +73,63 @@ pub struct NewSquad<'a> {
     pub display_name: &'a str,
 }
 
-#[derive(Identifiable, Queryable)]
-#[table_name = "person_squad_connection"]
-pub struct PersonSquadConnection {
+#[derive(Queryable, Identifiable)]
+#[table_name = "balance"]
+pub struct BalanceDetail {
     pub id: i32,
+    pub node_id: i32,
     pub person_id: i32,
     pub squad_id: i32,
 }
 
+#[derive(Queryable)]
+pub struct Balance {
+    pub node: Node,
+    pub detail: BalanceDetail,
+}
+
 #[derive(Insertable)]
-#[table_name = "person_squad_connection"]
-pub struct NewPersonSquadConnection {
+#[table_name = "balance"]
+pub struct NewBalance {
+    pub node_id: i32,
     pub person_id: i32,
     pub squad_id: i32,
+}
+
+#[derive(Queryable, Identifiable)]
+#[table_name = "txn"]
+pub struct TransactionDetail {
+    pub id: i32,
+    pub node_id: i32,
+    pub squad_id: i32,
+}
+
+#[derive(Queryable)]
+pub struct Transaction {
+    pub node: Node,
+    pub detail: TransactionDetail,
+}
+
+#[derive(Insertable)]
+#[table_name = "txn"]
+pub struct NewTransaction {
+    pub node_id: i32,
+    pub squad_id: i32,
+}
+
+#[derive(Queryable, Identifiable)]
+#[table_name = "txn_part"]
+pub struct TransactionPart {
+    pub id: i32,
+    pub txn_id: i32,
+    pub balance_id: i32,
+    pub balance_change_cents: i32,
+}
+
+#[derive(Insertable)]
+#[table_name = "txn_part"]
+pub struct NewTransactionPart {
+    pub txn_id: i32,
+    pub balance_id: i32,
+    pub balance_change_cents: i32,
 }

@@ -1,2 +1,3 @@
 -- This file should undo anything in `up.sql`
-DROP TABLE squad;
+DROP TABLE txn_part;
+DROP TABLE txn;

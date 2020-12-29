@@ -1,10 +1,7 @@
-use super::super::{
-    edges::{SquadMemberConnection, SquadMemberEdge},
-    PageInfo,
-};
+use super::super::edges::{SquadBalanceConnection, SquadTransactionConnection};
 use crate::db::{
     models,
-    schema::{node, person, person_squad_connection},
+    schema::{node, squad},
     Pool,
 };
 use async_graphql::{Context, FieldError, FieldResult};
@@ -31,33 +28,29 @@ impl Squad {
         &self.model.detail.display_name
     }
 
-    pub async fn members(&self, context: &Context<'_>) -> FieldResult<SquadMemberConnection> {
-        use diesel::expression::dsl::any;
-
-        let person_ids = person_squad_connection::table
-            .filter(person_squad_connection::squad_id.eq(self.model.detail.id))
-            .select(person_squad_connection::person_id);
-
-        node::table
-            .inner_join(person::table)
-            .filter(person::id.eq(any(person_ids)))
-            .load_async::<models::Person>(context.data::<Pool>())
+    pub async fn balances(&self, context: &Context<'_>) -> FieldResult<SquadBalanceConnection> {
+        SquadBalanceConnection::by_squad_id(context.data::<Pool>().unwrap(), self.model.detail.id)
             .await
-            .map(|people| SquadMemberConnection {
-                edges: people
-                    .into_iter()
-                    .map(|person| SquadMemberEdge {
-                        cursor: String::from(""),
-                        node: person.into(),
-                    })
-                    .collect(),
-                page_info: PageInfo {
-                    has_next_page: false,
-                    has_previous_page: false,
-                    start_cursor: String::from(""),
-                    end_cursor: String::from(""),
-                },
-            })
             .or_else(|_e| Err(FieldError::from("Internal error")))
+    }
+
+    pub async fn transactions(
+        &self,
+        context: &Context<'_>,
+    ) -> FieldResult<SquadTransactionConnection> {
+        SquadTransactionConnection::by_squad_id(context.data::<Pool>().unwrap(), self.model.detail.id)
+            .await
+            .or_else(|_e| Err(FieldError::from("Internal error")))
+    }
+}
+
+impl Squad {
+    pub async fn by_id(pool: &Pool, id: i32) -> AsyncResult<Squad> {
+        node::table
+            .inner_join(squad::table)
+            .filter(squad::id.eq(id))
+            .get_result_async::<models::Squad>(pool)
+            .await
+            .map(|squad| squad.into())
     }
 }

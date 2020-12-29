@@ -13,7 +13,7 @@ impl MutationRoot {
         context: &Context<'_>,
         input: NewPersonInput,
     ) -> FieldResult<NewPersonPayload> {
-        new_person(context.data::<Pool>(), input)
+        new_person(context.data::<Pool>().unwrap(), input)
             .await
             .or_else(|_e| {
                 // TODO: provide feedback on duplicate email or display_name
@@ -26,7 +26,7 @@ impl MutationRoot {
         context: &Context<'_>,
         input: NewSquadInput,
     ) -> FieldResult<NewSquadPayload> {
-        new_squad(context.data::<Pool>(), input)
+        new_squad(context.data::<Pool>().unwrap(), input)
             .await
             .or_else(|_e| Err(FieldError::from("Failed to create new squad")))
     }
@@ -36,8 +36,18 @@ impl MutationRoot {
         context: &Context<'_>,
         input: AddPersonToSquadInput,
     ) -> FieldResult<AddPersonToSquadPayload> {
-        add_person_to_squad(context.data::<Pool>(), input.try_into()?)
+        add_person_to_squad(context.data::<Pool>().unwrap(), input.try_into()?)
             .await
             .or_else(|_e| Err(FieldError::from("Failed to add person to squad")))
+    }
+
+    async fn new_transaction(
+        &self,
+        context: &Context<'_>,
+        input: NewTransactionInput,
+    ) -> FieldResult<NewTransactionPayload> {
+        new_transaction(context.data::<Pool>().unwrap(), input.try_into()?)
+            .await
+            .or_else(|_e| Err(FieldError::from("Failed to add transaction")))
     }
 }

@@ -1,21 +1,24 @@
-use super::{Person, Squad};
+use super::{Balance, Person, Squad, Transaction};
 use crate::db::{
     models,
-    schema::{node, person, squad},
+    schema::{balance, node, person, squad, txn},
     Pool,
 };
 use diesel::prelude::*;
 use tokio_diesel::*;
 use uuid::Uuid;
 
-#[async_graphql::Interface(field(name = "id", type = "String"))]
+#[derive(async_graphql::Interface)]
+#[graphql(field(name = "id", type = "String"))]
 pub enum Node {
     Person(Person),
     Squad(Squad),
+    Balance(Balance),
+    Transaction(Transaction),
 }
 
 impl Node {
-    pub async fn resolve_id(pool: &Pool, uid: Uuid) -> AsyncResult<Node> {
+    pub async fn by_uid(pool: &Pool, uid: Uuid) -> AsyncResult<Node> {
         pool.transaction(move |conn| {
             let node = node::table
                 .filter(node::uid.eq(uid))
@@ -38,6 +41,24 @@ impl Node {
 
                     Ok(Node::Squad(Squad {
                         model: models::Squad { node, detail }.into(),
+                    }))
+                }
+                models::NodeType::Balance => {
+                    let detail = balance::table
+                        .filter(balance::node_id.eq(node.id))
+                        .get_result::<models::BalanceDetail>(conn)?;
+
+                    Ok(Node::Balance(Balance {
+                        model: models::Balance { node, detail }.into(),
+                    }))
+                }
+                models::NodeType::Txn => {
+                    let detail = txn::table
+                        .filter(txn::node_id.eq(node.id))
+                        .get_result::<models::TransactionDetail>(conn)?;
+
+                    Ok(Node::Transaction(Transaction {
+                        model: models::Transaction { node, detail }.into(),
                     }))
                 }
             }

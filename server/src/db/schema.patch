@@ -1,0 +1,11 @@
+--- "src/db/schema copy.rs"	2020-12-26 14:11:07.780000000 -0800
++++ src/db/schema.rs	2020-12-26 14:10:49.670000000 -0800
+@@ -2,7 +2,7 @@
+     node (id) {
+         id -> Int4,
+         uid -> Uuid,
+-        node_type -> Node_type,
++        node_type -> crate::db::models::NodeTypeMapping,
+     }
+ }
+ 
