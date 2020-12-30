@@ -1,6 +1,6 @@
 use super::{
     super::nodes::Balance,
-    util::{Cursor, CursorDetail},
+    util::{Cursor, CursorDetail, EdgeWithCursor, EdgesWrapper, NodeWrapper},
 };
 use crate::db::{
     models,
@@ -21,20 +21,48 @@ pub enum PersonBalanceCursorDetail {
     ByAscendingId(Uuid),
 }
 
-impl CursorDetail for PersonBalanceCursorDetail {}
+impl CursorDetail for PersonBalanceCursorDetail {
+    type NodeT = Balance;
+
+    fn get_for_node(node: &Self::NodeT) -> Self {
+        Self::ByAscendingId(node.model.node.uid)
+    }
+}
 
 pub type PersonBalanceCursor = Cursor<PersonBalanceCursorDetail>;
 
-#[derive(async_graphql::SimpleObject)]
-pub struct PersonBalanceEdge {
-    pub cursor: String,
-    pub node: Balance,
+pub struct PersonBalanceEdge(NodeWrapper<PersonBalanceCursorDetail>);
+
+#[async_graphql::Object]
+impl PersonBalanceEdge {
+    pub async fn cursor(&self) -> String {
+        self.0.cursor().encode_cursor()
+    }
+
+    pub async fn node(&self) -> &Balance {
+        self.0.node()
+    }
 }
 
-#[derive(async_graphql::SimpleObject)]
-pub struct PersonBalanceConnection {
-    pub edges: Vec<PersonBalanceEdge>,
-    pub page_info: PageInfo,
+impl EdgeWithCursor for PersonBalanceEdge {
+    type CursorT = PersonBalanceCursor;
+
+    fn get_cursor(&self) -> Self::CursorT {
+        self.0.cursor()
+    }
+}
+
+pub struct PersonBalanceConnection(EdgesWrapper<PersonBalanceEdge>);
+
+#[async_graphql::Object]
+impl PersonBalanceConnection {
+    pub async fn edges(&self) -> &Vec<PersonBalanceEdge> {
+        self.0.edges()
+    }
+
+    pub async fn page_info(&self) -> PageInfo {
+        self.0.page_info()
+    }
 }
 
 impl PersonBalanceConnection {
@@ -64,25 +92,14 @@ impl PersonBalanceConnection {
 
                 let edges: Vec<PersonBalanceEdge> = balances
                     .into_iter()
-                    .map(|balance| PersonBalanceEdge {
-                        cursor: Cursor(PersonBalanceCursorDetail::ByAscendingId(balance.node.uid))
-                            .encode_cursor(),
-                        node: balance.into(),
-                    })
+                    .map(|balance| PersonBalanceEdge(NodeWrapper(balance.into())))
                     .collect();
 
-                let start_cursor = edges.first().map(|edge| edge.cursor.clone());
-                let end_cursor = edges.last().map(|edge| edge.cursor.clone());
-
-                Ok(PersonBalanceConnection {
-                    edges,
-                    page_info: PageInfo {
-                        has_previous_page: false,
-                        has_next_page: false,
-                        start_cursor,
-                        end_cursor,
-                    },
-                })
+                Ok(PersonBalanceConnection(EdgesWrapper {
+                    edges: edges,
+                    has_previous_page: false,
+                    has_next_page: false,
+                }))
             },
         )
         .await

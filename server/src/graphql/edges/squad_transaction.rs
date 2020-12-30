@@ -1,6 +1,6 @@
 use super::{
     super::nodes::Transaction,
-    util::{Cursor, CursorDetail},
+    util::{Cursor, CursorDetail, EdgeWithCursor, EdgesWrapper, NodeWrapper},
 };
 use crate::db::{
     models,
@@ -21,20 +21,48 @@ pub enum SquadTransactionCursorDetail {
     ByAscendingId(Uuid),
 }
 
-impl CursorDetail for SquadTransactionCursorDetail {}
+impl CursorDetail for SquadTransactionCursorDetail {
+    type NodeT = Transaction;
+
+    fn get_for_node(node: &Self::NodeT) -> Self {
+        Self::ByAscendingId(node.model.node.uid)
+    }
+}
 
 pub type SquadTransactionCursor = Cursor<SquadTransactionCursorDetail>;
 
-#[derive(async_graphql::SimpleObject)]
-pub struct SquadTransactionEdge {
-    pub cursor: String,
-    pub node: Transaction,
+pub struct SquadTransactionEdge(NodeWrapper<SquadTransactionCursorDetail>);
+
+#[async_graphql::Object]
+impl SquadTransactionEdge {
+    pub async fn cursor(&self) -> String {
+        self.0.cursor().encode_cursor()
+    }
+
+    pub async fn node(&self) -> &Transaction {
+        self.0.node()
+    }
 }
 
-#[derive(async_graphql::SimpleObject)]
-pub struct SquadTransactionConnection {
-    pub edges: Vec<SquadTransactionEdge>,
-    pub page_info: PageInfo,
+impl EdgeWithCursor for SquadTransactionEdge {
+    type CursorT = SquadTransactionCursor;
+
+    fn get_cursor(&self) -> Self::CursorT {
+        self.0.cursor()
+    }
+}
+
+pub struct SquadTransactionConnection(EdgesWrapper<SquadTransactionEdge>);
+
+#[async_graphql::Object]
+impl SquadTransactionConnection {
+    pub async fn edges(&self) -> &Vec<SquadTransactionEdge> {
+        self.0.edges()
+    }
+
+    pub async fn page_info(&self) -> PageInfo {
+        self.0.page_info()
+    }
 }
 
 impl SquadTransactionConnection {
@@ -64,27 +92,14 @@ impl SquadTransactionConnection {
 
                 let edges: Vec<SquadTransactionEdge> = transactions
                     .into_iter()
-                    .map(|transaction| SquadTransactionEdge {
-                        cursor: Cursor(SquadTransactionCursorDetail::ByAscendingId(
-                            transaction.node.uid,
-                        ))
-                        .encode_cursor(),
-                        node: transaction.into(),
-                    })
+                    .map(|transaction| SquadTransactionEdge(NodeWrapper(transaction.into())))
                     .collect();
 
-                let start_cursor = edges.first().map(|edge| edge.cursor.clone());
-                let end_cursor = edges.last().map(|edge| edge.cursor.clone());
-
-                Ok(SquadTransactionConnection {
+                Ok(SquadTransactionConnection(EdgesWrapper {
                     edges,
-                    page_info: PageInfo {
-                        has_previous_page: false,
-                        has_next_page: false,
-                        start_cursor,
-                        end_cursor,
-                    },
-                })
+                    has_previous_page: false,
+                    has_next_page: false,
+                }))
             },
         )
         .await

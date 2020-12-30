@@ -1,6 +1,6 @@
 use super::{
     super::nodes::Balance,
-    util::{Cursor, CursorDetail},
+    util::{Cursor, CursorDetail, EdgeWithCursor, EdgesWrapper, NodeWrapper},
 };
 use crate::db::{
     models,
@@ -21,20 +21,48 @@ pub enum SquadBalanceCursorDetail {
     ByAscendingId(Uuid),
 }
 
-impl CursorDetail for SquadBalanceCursorDetail {}
+impl CursorDetail for SquadBalanceCursorDetail {
+    type NodeT = Balance;
+
+    fn get_for_node(node: &Self::NodeT) -> Self {
+        Self::ByAscendingId(node.model.node.uid)
+    }
+}
 
 pub type SquadBalanceCursor = Cursor<SquadBalanceCursorDetail>;
 
-#[derive(async_graphql::SimpleObject)]
-pub struct SquadBalanceEdge {
-    pub cursor: String,
-    pub node: Balance,
+pub struct SquadBalanceEdge(NodeWrapper<SquadBalanceCursorDetail>);
+
+#[async_graphql::Object]
+impl SquadBalanceEdge {
+    pub async fn cursor(&self) -> String {
+        self.0.cursor().encode_cursor()
+    }
+
+    pub async fn node(&self) -> &Balance {
+        self.0.node()
+    }
 }
 
-#[derive(async_graphql::SimpleObject)]
-pub struct SquadBalanceConnection {
-    pub edges: Vec<SquadBalanceEdge>,
-    pub page_info: PageInfo,
+impl EdgeWithCursor for SquadBalanceEdge {
+    type CursorT = SquadBalanceCursor;
+
+    fn get_cursor(&self) -> Self::CursorT {
+        self.0.cursor()
+    }
+}
+
+pub struct SquadBalanceConnection(EdgesWrapper<SquadBalanceEdge>);
+
+#[async_graphql::Object]
+impl SquadBalanceConnection {
+    pub async fn edges(&self) -> &Vec<SquadBalanceEdge> {
+        self.0.edges()
+    }
+
+    pub async fn page_info(&self) -> PageInfo {
+        self.0.page_info()
+    }
 }
 
 impl SquadBalanceConnection {
@@ -64,25 +92,14 @@ impl SquadBalanceConnection {
 
                 let edges: Vec<SquadBalanceEdge> = balances
                     .into_iter()
-                    .map(|balance| SquadBalanceEdge {
-                        cursor: Cursor(SquadBalanceCursorDetail::ByAscendingId(balance.node.uid))
-                            .encode_cursor(),
-                        node: balance.into(),
-                    })
+                    .map(|balance| SquadBalanceEdge(NodeWrapper(balance.into())))
                     .collect();
 
-                let start_cursor = edges.first().map(|edge| edge.cursor.clone());
-                let end_cursor = edges.last().map(|edge| edge.cursor.clone());
-
-                Ok(SquadBalanceConnection {
+                Ok(SquadBalanceConnection(EdgesWrapper {
                     edges,
-                    page_info: PageInfo {
-                        has_previous_page: false,
-                        has_next_page: false,
-                        start_cursor,
-                        end_cursor,
-                    },
-                })
+                    has_previous_page: false,
+                    has_next_page: false,
+                }))
             },
         )
         .await

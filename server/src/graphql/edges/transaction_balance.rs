@@ -1,6 +1,6 @@
 use super::{
     super::nodes::Balance,
-    util::{Cursor, CursorDetail},
+    util::{Cursor, CursorDetail, EdgeWithCursor, EdgesWrapper, NodeWrapper},
 };
 use crate::db::{
     models,
@@ -21,21 +21,55 @@ pub enum TransactionBalanceCursorDetail {
     ByAscendingId(Uuid),
 }
 
-impl CursorDetail for TransactionBalanceCursorDetail {}
+impl CursorDetail for TransactionBalanceCursorDetail {
+    type NodeT = Balance;
+
+    fn get_for_node(node: &Self::NodeT) -> Self {
+        Self::ByAscendingId(node.model.node.uid)
+    }
+}
 
 pub type TransactionBalanceCursor = Cursor<TransactionBalanceCursorDetail>;
 
-#[derive(async_graphql::SimpleObject)]
 pub struct TransactionBalanceEdge {
-    pub cursor: String,
-    pub node: Balance,
-    pub balance_change_cents: i32,
+    wrapper: NodeWrapper<TransactionBalanceCursorDetail>,
+    balance_change_cents: i32,
 }
 
-#[derive(async_graphql::SimpleObject)]
-pub struct TransactionBalanceConnection {
-    pub edges: Vec<TransactionBalanceEdge>,
-    pub page_info: PageInfo,
+#[async_graphql::Object]
+impl TransactionBalanceEdge {
+    pub async fn cursor(&self) -> String {
+        self.wrapper.cursor().encode_cursor()
+    }
+
+    pub async fn node(&self) -> &Balance {
+        self.wrapper.node()
+    }
+
+    pub async fn balance_change_cents(&self) -> &i32 {
+        &self.balance_change_cents
+    }
+}
+
+impl EdgeWithCursor for TransactionBalanceEdge {
+    type CursorT = TransactionBalanceCursor;
+
+    fn get_cursor(&self) -> Self::CursorT {
+        self.wrapper.cursor()
+    }
+}
+
+pub struct TransactionBalanceConnection(EdgesWrapper<TransactionBalanceEdge>);
+
+#[async_graphql::Object]
+impl TransactionBalanceConnection {
+    pub async fn edges(&self) -> &Vec<TransactionBalanceEdge> {
+        self.0.edges()
+    }
+
+    pub async fn page_info(&self) -> PageInfo {
+        self.0.page_info()
+    }
 }
 
 impl TransactionBalanceConnection {
@@ -70,27 +104,16 @@ impl TransactionBalanceConnection {
                 let edges: Vec<TransactionBalanceEdge> = balances
                     .into_iter()
                     .map(|(transaction_part, balance)| TransactionBalanceEdge {
-                        cursor: Cursor(TransactionBalanceCursorDetail::ByAscendingId(
-                            balance.node.uid,
-                        ))
-                        .encode_cursor(),
-                        node: balance.into(),
+                        wrapper: NodeWrapper(balance.into()),
                         balance_change_cents: transaction_part.balance_change_cents,
                     })
                     .collect();
 
-                let start_cursor = edges.first().map(|edge| edge.cursor.clone());
-                let end_cursor = edges.last().map(|edge| edge.cursor.clone());
-
-                Ok(TransactionBalanceConnection {
+                Ok(TransactionBalanceConnection(EdgesWrapper {
                     edges,
-                    page_info: PageInfo {
-                        has_previous_page: false,
-                        has_next_page: false,
-                        start_cursor,
-                        end_cursor,
-                    },
-                })
+                    has_previous_page: false,
+                    has_next_page: false,
+                }))
             },
         )
         .await
