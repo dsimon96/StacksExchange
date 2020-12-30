@@ -66,7 +66,7 @@ impl GoogleSignInClient {
 
             let verification_result = token_data.claims.verify(self);
             if verification_result.is_ok() {
-              return Ok(token_data.claims);
+                return Ok(token_data.claims);
             }
         }
 

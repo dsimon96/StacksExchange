@@ -22,10 +22,21 @@ impl Transaction {
         Squad::by_id(context.data::<Pool>().unwrap(), self.model.detail.squad_id).await
     }
 
-    pub async fn balances(&self, context: &Context<'_>) -> Result<TransactionBalanceConnection> {
+    pub async fn balances(
+        &self,
+        context: &Context<'_>,
+        after: Option<String>,
+        before: Option<String>,
+        first: Option<i32>,
+        last: Option<i32>,
+    ) -> Result<TransactionBalanceConnection> {
         TransactionBalanceConnection::by_transaction_id(
             context.data::<Pool>().unwrap(),
             self.model.detail.id,
+            after,
+            before,
+            first,
+            last,
         )
         .await
     }

@@ -37,9 +37,23 @@ impl Person {
         &self.model.detail.last_name
     }
 
-    pub async fn balances(&self, context: &Context<'_>) -> Result<PersonBalanceConnection> {
-        PersonBalanceConnection::by_person_id(context.data::<Pool>().unwrap(), self.model.detail.id)
-            .await
+    pub async fn balances(
+        &self,
+        context: &Context<'_>,
+        after: Option<String>,
+        before: Option<String>,
+        first: Option<i32>,
+        last: Option<i32>,
+    ) -> Result<PersonBalanceConnection> {
+        PersonBalanceConnection::by_person_id(
+            context.data::<Pool>().unwrap(),
+            self.model.detail.id,
+            after,
+            before,
+            first,
+            last,
+        )
+        .await
     }
 }
 
