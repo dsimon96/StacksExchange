@@ -1,0 +1,2 @@
+web: ./target/release/stacks-exchange
+release: ./target/release/diesel migration run

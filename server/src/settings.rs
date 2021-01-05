@@ -33,7 +33,7 @@ impl Settings {
         }
 
         // apply any conf overrides provided in env (e.g. DEF_addr="...")
-        cfg.merge(Environment::with_prefix("DEF").separator("_"))?;
+        cfg.merge(Environment::with_prefix("DEF").separator("."))?;
 
         Ok(cfg.try_into()?)
     }

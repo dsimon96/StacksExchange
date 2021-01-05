@@ -90,14 +90,14 @@ You can additionally override individual values at the time of command
 invocation by adding an environment variable of the form `DEF_param_name=val`.
 These are applied after any overrides provided in the provided conf file. Values
 in a named section of the config should be prefixed with the name of the
-section, followed by an underscore. For convenience, you can define environment
+section, followed by a period. For convenience, you can define environment
 variables in the `.env` file, which will be loaded at the beginning of the
 program. This is mainly for the convenience of not having to provide the
 environment variables repeatedly - refrain from access environment variables
 directly without declaring them in `settings::Settings`.
 
 ```
-DEF_varname=foo DEF_section_varname=bar cargo run -- -c conf/prod.toml
+env "DEF_varname=foo" "DEF_section.varname=bar" cargo run -- -c conf/prod.toml
 ```
 
 The one exception is logging level, which is set via the `RUST_LOG` environment
@@ -111,9 +111,6 @@ RUST_LOG="actix_web=info" cargo run --features graphiql
 # Generating Schema Digest
 
 Many tools in the GraphQL ecosystem depend on having a declaration of a
-service's schema. You can use the binary target `dump-schema` to generate a
-`schema.json` file for use with these tools.
-
-```
-cargo run --bin dump-schema > schema.json
-```
+service's schema. To generate a `schema.json` file for use with these tools, 
+start a server with the `graphiql` feature, and use GraphQL Playground to
+download the schema.

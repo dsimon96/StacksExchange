@@ -12,7 +12,7 @@ use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
 use settings::Settings;
 use std::{
-    convert::TryFrom,
+    env,
     net::{IpAddr, SocketAddr},
     path::PathBuf,
 };
@@ -38,9 +38,12 @@ async fn main() -> Result<()> {
     // validate server config values before doing anything else
     let addr = SocketAddr::from((
         settings.server.listen_addr.parse::<IpAddr>()?,
-        u16::try_from(settings.server.listen_port)?,
+        env::var("PORT")
+            .ok()
+            .map(|s| s.parse::<u16>().unwrap())
+            .unwrap_or(settings.server.listen_port),
     ));
-    let pool = db::make_pool(&settings.db)?;
+    let pool = db::make_pool(&env::var("DATABASE_URL").unwrap_or(settings.db.to_string()))?;
     let server_name = settings.server.name.clone();
 
     let mut server = HttpServer::new(move || {

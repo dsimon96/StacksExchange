@@ -4,6 +4,7 @@ pub mod schema;
 use anyhow::Result;
 use diesel::{pg::PgConnection, r2d2};
 use serde::Deserialize;
+use std::fmt;
 
 pub type Pool = r2d2::Pool<r2d2::ConnectionManager<PgConnection>>;
 
@@ -21,15 +22,10 @@ pub struct DatabaseSettings {
     pub read_timeout_ms: u64,
 }
 
-impl DatabaseSettings {
+impl fmt::Display for DatabaseSettings {
     /// Obtain a [postgres url](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
     /// with the given configuration parameters
-    fn to_postgres_url(&self) -> String {
-        let mut url = format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.user, self.password, self.host, self.port, self.dbname
-        );
-
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut params = Vec::new();
 
         if let Some(app_name) = &self.application_name {
@@ -40,18 +36,25 @@ impl DatabaseSettings {
             params.push(format!("connect_timeout={}", self.connect_timeout_sec));
         }
 
-        if !params.is_empty() {
-            url += "?";
-            url += &params.join("&");
-        }
+        let params = if !params.is_empty() {
+            let mut p = String::from("?");
+            p += &params.join("&");
+            p
+        } else {
+            String::new()
+        };
 
-        url
+        write!(
+            f,
+            "postgres://{}:{}@{}:{}/{}{}",
+            self.user, self.password, self.host, self.port, self.dbname, params
+        )
     }
 }
 
 /// Create a database connection pool with the given configuration parameters
-pub fn make_pool(cfg: &DatabaseSettings) -> Result<Pool> {
-    let manager = r2d2::ConnectionManager::<PgConnection>::new(cfg.to_postgres_url());
+pub fn make_pool(url: &String) -> Result<Pool> {
+    let manager = r2d2::ConnectionManager::<PgConnection>::new(url);
 
     Ok(r2d2::Pool::new(manager)?)
 }
@@ -59,6 +62,7 @@ pub fn make_pool(cfg: &DatabaseSettings) -> Result<Pool> {
 #[cfg(test)]
 mod tests {
     use super::DatabaseSettings;
+    use std::string::ToString;
 
     #[test]
     fn test_to_postgres_url() {
@@ -86,21 +90,18 @@ mod tests {
             ..with_app_name.clone()
         };
 
-        assert_eq!(
-            "postgres://user:hunter2@host:1337/mydb",
-            basic.to_postgres_url()
-        );
+        assert_eq!("postgres://user:hunter2@host:1337/mydb", basic.to_string());
         assert_eq!(
             "postgres://user:hunter2@host:1337/mydb?application_name=myapp",
-            with_app_name.to_postgres_url()
+            with_app_name.to_string()
         );
         assert_eq!(
             "postgres://user:hunter2@host:1337/mydb?connect_timeout=42",
-            with_timeout.to_postgres_url()
+            with_timeout.to_string()
         );
         assert_eq!(
             "postgres://user:hunter2@host:1337/mydb?application_name=myapp&connect_timeout=42",
-            with_both.to_postgres_url()
+            with_both.to_string()
         );
     }
 }
