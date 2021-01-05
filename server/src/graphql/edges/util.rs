@@ -50,9 +50,7 @@ impl<T: CursorDetail> CursorType for Cursor<T> {
         let decoded = base64::decode(&s)?;
         let ce: CursorEncoding = from_read_ref(&decoded)?;
 
-        let serialized_cursor = match ce {
-            CursorEncoding::Basic(buf) => buf,
-        };
+        let CursorEncoding::Basic(serialized_cursor) = ce;
 
         Ok(Cursor(from_read_ref(&serialized_cursor)?))
     }

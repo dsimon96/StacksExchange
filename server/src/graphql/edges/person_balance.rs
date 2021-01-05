@@ -96,7 +96,7 @@ impl PersonBalanceConnection {
                     .collect();
 
                 Ok(PersonBalanceConnection(EdgesWrapper {
-                    edges: edges,
+                    edges,
                     has_previous_page: false,
                     has_next_page: false,
                 }))
