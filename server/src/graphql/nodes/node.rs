@@ -32,36 +32,30 @@ impl Node {
                             .filter(person::node_id.eq(node.id))
                             .get_result::<models::PersonDetail>(conn)?;
 
-                        Ok(Node::Person(Person {
-                            model: models::Person { node, detail }.into(),
-                        }))
+                        Ok(Node::Person(models::Person { node, detail }.into()))
                     }
                     models::NodeType::Squad => {
                         let detail = squad::table
                             .filter(squad::node_id.eq(node.id))
                             .get_result::<models::SquadDetail>(conn)?;
 
-                        Ok(Node::Squad(Squad {
-                            model: models::Squad { node, detail }.into(),
-                        }))
+                        Ok(Node::Squad(models::Squad { node, detail }.into()))
                     }
                     models::NodeType::Balance => {
                         let detail = balance::table
                             .filter(balance::node_id.eq(node.id))
                             .get_result::<models::BalanceDetail>(conn)?;
 
-                        Ok(Node::Balance(Balance {
-                            model: models::Balance { node, detail }.into(),
-                        }))
+                        Ok(Node::Balance(models::Balance { node, detail }.into()))
                     }
                     models::NodeType::Txn => {
                         let detail = txn::table
                             .filter(txn::node_id.eq(node.id))
                             .get_result::<models::TransactionDetail>(conn)?;
 
-                        Ok(Node::Transaction(Transaction {
-                            model: models::Transaction { node, detail }.into(),
-                        }))
+                        Ok(Node::Transaction(
+                            models::Transaction { node, detail }.into(),
+                        ))
                     }
                 }
             })

@@ -76,9 +76,7 @@ pub async fn add_person_to_squad(
             let balance = diesel::insert_into(balance::table)
                 .values(&new_balance)
                 .get_result::<models::BalanceDetail>(conn)
-                .map(|detail| Balance {
-                    model: models::Balance { node, detail },
-                })?;
+                .map(|detail| models::Balance { node, detail })?;
 
             Ok(AddPersonToSquadPayload {
                 balance: balance.into(),

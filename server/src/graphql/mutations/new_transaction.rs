@@ -131,9 +131,7 @@ pub async fn new_transaction(
             let transaction = diesel::insert_into(txn::table)
                 .values(&new_transaction)
                 .get_result::<models::TransactionDetail>(conn)
-                .map(|detail| Transaction {
-                    model: models::Transaction { node, detail },
-                })?;
+                .map(|detail| models::Transaction { node, detail })?;
 
             let balance_uids = input.balance_changes_detail.keys().collect::<Vec<_>>();
 
@@ -146,7 +144,7 @@ pub async fn new_transaction(
                 .iter()
                 .map(|balance| {
                     Ok(models::NewTransactionPart {
-                        txn_id: transaction.model.detail.id,
+                        txn_id: transaction.detail.id,
                         balance_id: balance.detail.id,
                         balance_change_cents: *input
                             .balance_changes_detail
