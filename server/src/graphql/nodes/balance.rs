@@ -1,5 +1,4 @@
-use super::super::edges::BalanceTransactionConnection;
-use super::{Person, Squad};
+use super::{super::edges::BalanceTransactionConnection, Person, Squad};
 use crate::db::{models, schema::txn_part, Pool};
 use async_graphql::{Context, Result};
 use diesel::prelude::*;
@@ -47,10 +46,18 @@ impl Balance {
     pub async fn transactions(
         &self,
         context: &Context<'_>,
+        after: Option<String>,
+        before: Option<String>,
+        first: Option<i32>,
+        last: Option<i32>,
     ) -> Result<BalanceTransactionConnection> {
         BalanceTransactionConnection::by_balance_id(
             context.data::<Pool>().unwrap(),
             self.model.detail.id,
+            after,
+            before,
+            first,
+            last,
         )
         .await
     }

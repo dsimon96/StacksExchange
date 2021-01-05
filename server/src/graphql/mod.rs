@@ -3,11 +3,9 @@ pub mod mutations;
 pub mod nodes;
 
 mod mutation_root;
-mod page_info;
 mod query_root;
 
 pub use mutation_root::*;
-pub use page_info::*;
 pub use query_root::*;
 
 use crate::{db, settings::Settings};

@@ -28,15 +28,40 @@ impl Squad {
         &self.model.detail.display_name
     }
 
-    pub async fn balances(&self, context: &Context<'_>) -> Result<SquadBalanceConnection> {
-        SquadBalanceConnection::by_squad_id(context.data::<Pool>().unwrap(), self.model.detail.id)
-            .await
+    pub async fn balances(
+        &self,
+        context: &Context<'_>,
+        after: Option<String>,
+        before: Option<String>,
+        first: Option<i32>,
+        last: Option<i32>,
+    ) -> Result<SquadBalanceConnection> {
+        SquadBalanceConnection::by_squad_id(
+            context.data::<Pool>().unwrap(),
+            self.model.detail.id,
+            after,
+            before,
+            first,
+            last,
+        )
+        .await
     }
 
-    pub async fn transactions(&self, context: &Context<'_>) -> Result<SquadTransactionConnection> {
+    pub async fn transactions(
+        &self,
+        context: &Context<'_>,
+        after: Option<String>,
+        before: Option<String>,
+        first: Option<i32>,
+        last: Option<i32>,
+    ) -> Result<SquadTransactionConnection> {
         SquadTransactionConnection::by_squad_id(
             context.data::<Pool>().unwrap(),
             self.model.detail.id,
+            after,
+            before,
+            first,
+            last,
         )
         .await
     }
