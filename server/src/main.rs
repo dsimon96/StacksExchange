@@ -54,9 +54,6 @@ async fn main() -> Result<()> {
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
             .service(
-                Files::new("/", "./static").index_file("index.html")
-            )
-            .service(
                 web::resource("/oauth")
                     .name("oauth")
                     .route(web::post().to(auth::oauth_handler)),
@@ -68,12 +65,14 @@ async fn main() -> Result<()> {
                     .route(web::get().to(app::graphql)),
             );
 
-        if cfg!(feature = "graphiql") {
+        let app = if cfg!(feature = "graphiql") {
             app.service(web::resource("/graphiql").route(web::get().to(app::graphiql)))
                 .service(web::resource("/playground").route(web::get().to(app::playground)))
         } else {
             app
-        }
+        };
+
+        app.service(Files::new("/", "./static").index_file("index.html"))
     })
     .server_hostname(server_name);
 
