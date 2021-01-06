@@ -8,6 +8,7 @@ mod settings;
 #[macro_use]
 extern crate diesel;
 
+use actix_files::Files;
 use actix_web::{middleware, web, App, HttpServer};
 use anyhow::Result;
 use settings::Settings;
@@ -52,6 +53,9 @@ async fn main() -> Result<()> {
             .data(settings.clone())
             .wrap(middleware::Compress::default())
             .wrap(middleware::Logger::default())
+            .service(
+                Files::new("/", "./static").index_file("index.html")
+            )
             .service(
                 web::resource("/oauth")
                     .name("oauth")

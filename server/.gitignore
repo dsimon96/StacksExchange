@@ -7,3 +7,6 @@
 
 # May contain secrets
 /.env
+
+# Output of client build
+/static/
