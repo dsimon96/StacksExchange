@@ -4,6 +4,7 @@ use crate::db::{
     schema::{balance, node},
     Pool,
 };
+use async_graphql::Result;
 use diesel::prelude::*;
 use tokio_diesel::*;
 
@@ -20,8 +21,8 @@ pub struct SquadBalanceConnection {
 }
 
 impl SquadBalanceConnection {
-    pub async fn by_squad_id(pool: &Pool, squad_id: i32) -> AsyncResult<SquadBalanceConnection> {
-        node::table
+    pub async fn by_squad_id(pool: &Pool, squad_id: i32) -> Result<SquadBalanceConnection> {
+        Ok(node::table
             .inner_join(balance::table)
             .filter(balance::squad_id.eq(squad_id))
             .get_results_async::<models::Balance>(pool)
@@ -40,6 +41,6 @@ impl SquadBalanceConnection {
                     start_cursor: String::from(""),
                     end_cursor: String::from(""),
                 },
-            })
+            })?)
     }
 }

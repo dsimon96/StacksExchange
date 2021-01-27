@@ -4,7 +4,7 @@ use crate::db::{
     schema::{node, squad},
     Pool,
 };
-use async_graphql::{Context, FieldError, FieldResult};
+use async_graphql::{Context, Result};
 use diesel::prelude::*;
 use tokio_diesel::*;
 
@@ -28,29 +28,27 @@ impl Squad {
         &self.model.detail.display_name
     }
 
-    pub async fn balances(&self, context: &Context<'_>) -> FieldResult<SquadBalanceConnection> {
+    pub async fn balances(&self, context: &Context<'_>) -> Result<SquadBalanceConnection> {
         SquadBalanceConnection::by_squad_id(context.data::<Pool>().unwrap(), self.model.detail.id)
             .await
-            .or_else(|_e| Err(FieldError::from("Internal error")))
     }
 
-    pub async fn transactions(
-        &self,
-        context: &Context<'_>,
-    ) -> FieldResult<SquadTransactionConnection> {
-        SquadTransactionConnection::by_squad_id(context.data::<Pool>().unwrap(), self.model.detail.id)
-            .await
-            .or_else(|_e| Err(FieldError::from("Internal error")))
+    pub async fn transactions(&self, context: &Context<'_>) -> Result<SquadTransactionConnection> {
+        SquadTransactionConnection::by_squad_id(
+            context.data::<Pool>().unwrap(),
+            self.model.detail.id,
+        )
+        .await
     }
 }
 
 impl Squad {
-    pub async fn by_id(pool: &Pool, id: i32) -> AsyncResult<Squad> {
-        node::table
+    pub async fn by_id(pool: &Pool, id: i32) -> Result<Squad> {
+        Ok(node::table
             .inner_join(squad::table)
             .filter(squad::id.eq(id))
             .get_result_async::<models::Squad>(pool)
             .await
-            .map(|squad| squad.into())
+            .map(|squad| squad.into())?)
     }
 }

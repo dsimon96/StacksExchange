@@ -1,6 +1,6 @@
 use super::mutations::*;
 use crate::db::Pool;
-use async_graphql::{Context, FieldError, FieldResult};
+use async_graphql::{Context, Result};
 use std::convert::TryInto;
 
 /// Schema entry-point for mutations
@@ -12,42 +12,31 @@ impl MutationRoot {
         &self,
         context: &Context<'_>,
         input: NewPersonInput,
-    ) -> FieldResult<NewPersonPayload> {
-        new_person(context.data::<Pool>().unwrap(), input)
-            .await
-            .or_else(|_e| {
-                // TODO: provide feedback on duplicate email or display_name
-                Err(FieldError::from("Failed to create new account"))
-            })
+    ) -> Result<NewPersonPayload> {
+        new_person(context.data::<Pool>().unwrap(), input).await
     }
 
     async fn new_squad(
         &self,
         context: &Context<'_>,
         input: NewSquadInput,
-    ) -> FieldResult<NewSquadPayload> {
-        new_squad(context.data::<Pool>().unwrap(), input)
-            .await
-            .or_else(|_e| Err(FieldError::from("Failed to create new squad")))
+    ) -> Result<NewSquadPayload> {
+        new_squad(context.data::<Pool>().unwrap(), input).await
     }
 
     async fn add_person_to_squad(
         &self,
         context: &Context<'_>,
         input: AddPersonToSquadInput,
-    ) -> FieldResult<AddPersonToSquadPayload> {
-        add_person_to_squad(context.data::<Pool>().unwrap(), input.try_into()?)
-            .await
-            .or_else(|_e| Err(FieldError::from("Failed to add person to squad")))
+    ) -> Result<AddPersonToSquadPayload> {
+        add_person_to_squad(context.data::<Pool>().unwrap(), input.try_into()?).await
     }
 
     async fn new_transaction(
         &self,
         context: &Context<'_>,
         input: NewTransactionInput,
-    ) -> FieldResult<NewTransactionPayload> {
-        new_transaction(context.data::<Pool>().unwrap(), input.try_into()?)
-            .await
-            .or_else(|_e| Err(FieldError::from("Failed to add transaction")))
+    ) -> Result<NewTransactionPayload> {
+        new_transaction(context.data::<Pool>().unwrap(), input.try_into()?).await
     }
 }

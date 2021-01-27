@@ -1,7 +1,7 @@
 use super::super::edges::BalanceTransactionConnection;
 use super::{Person, Squad};
 use crate::db::{models, schema::txn_part, Pool};
-use async_graphql::{Context, FieldError, FieldResult};
+use async_graphql::{Context, Result};
 use diesel::prelude::*;
 use std::convert::TryFrom;
 use tokio_diesel::*;
@@ -22,7 +22,7 @@ impl Balance {
         self.model.node.uid.to_string()
     }
 
-    pub async fn total_cents(&self, context: &Context<'_>) -> FieldResult<i32> {
+    pub async fn total_cents(&self, context: &Context<'_>) -> Result<i32> {
         use diesel::dsl::sum;
 
         let sum = txn_part::table
@@ -36,24 +36,22 @@ impl Balance {
             .unwrap_or(0))
     }
 
-    pub async fn person(&self, context: &Context<'_>) -> FieldResult<Person> {
-        Person::by_id(context.data::<Pool>().unwrap(), self.model.detail.person_id)
-            .await
-            .or_else(|_e| Err(FieldError::from("Internal error")))
+    pub async fn person(&self, context: &Context<'_>) -> Result<Person> {
+        Person::by_id(context.data::<Pool>().unwrap(), self.model.detail.person_id).await
     }
 
-    pub async fn squad(&self, context: &Context<'_>) -> FieldResult<Squad> {
-        Squad::by_id(context.data::<Pool>().unwrap(), self.model.detail.squad_id)
-            .await
-            .or_else(|_e| Err(FieldError::from("Internal error")))
+    pub async fn squad(&self, context: &Context<'_>) -> Result<Squad> {
+        Squad::by_id(context.data::<Pool>().unwrap(), self.model.detail.squad_id).await
     }
 
     pub async fn transactions(
         &self,
         context: &Context<'_>,
-    ) -> FieldResult<BalanceTransactionConnection> {
-        BalanceTransactionConnection::by_balance_id(context.data::<Pool>().unwrap(), self.model.detail.id)
-            .await
-            .or_else(|_e| Err(FieldError::from("Internal error")))
+    ) -> Result<BalanceTransactionConnection> {
+        BalanceTransactionConnection::by_balance_id(
+            context.data::<Pool>().unwrap(),
+            self.model.detail.id,
+        )
+        .await
     }
 }
