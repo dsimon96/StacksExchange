@@ -53,7 +53,7 @@ impl fmt::Display for DatabaseSettings {
 }
 
 /// Create a database connection pool with the given configuration parameters
-pub fn make_pool(url: &String) -> Result<Pool> {
+pub fn make_pool(url: &str) -> Result<Pool> {
     let manager = r2d2::ConnectionManager::<PgConnection>::new(url);
 
     Ok(r2d2::Pool::new(manager)?)

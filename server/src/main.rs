@@ -44,7 +44,8 @@ async fn main() -> Result<()> {
             .map(|s| s.parse::<u16>().unwrap())
             .unwrap_or(settings.server.listen_port),
     ));
-    let pool = db::make_pool(&env::var("DATABASE_URL").unwrap_or(settings.db.to_string()))?;
+    let pool =
+        db::make_pool(&env::var("DATABASE_URL").unwrap_or_else(|_| settings.db.to_string()))?;
     let server_name = settings.server.name.clone();
 
     let mut server = HttpServer::new(move || {

@@ -4,7 +4,7 @@ use crate::db::{
     schema::{node, person},
     Pool,
 };
-use async_graphql::{Context, FieldError, FieldResult};
+use async_graphql::{Context, Result};
 use diesel::prelude::*;
 use tokio_diesel::*;
 
@@ -37,29 +37,28 @@ impl Person {
         &self.model.detail.last_name
     }
 
-    pub async fn balances(&self, context: &Context<'_>) -> FieldResult<PersonBalanceConnection> {
+    pub async fn balances(&self, context: &Context<'_>) -> Result<PersonBalanceConnection> {
         PersonBalanceConnection::by_person_id(context.data::<Pool>().unwrap(), self.model.detail.id)
             .await
-            .or_else(|_e| Err(FieldError::from("Internal error")))
     }
 }
 
 impl Person {
-    pub async fn by_email(pool: &Pool, email: String) -> AsyncResult<Person> {
-        node::table
+    pub async fn by_email(pool: &Pool, email: String) -> Result<Person> {
+        Ok(node::table
             .inner_join(person::table)
             .filter(person::email.eq(email))
             .get_result_async::<models::Person>(pool)
             .await
-            .map(|person| person.into())
+            .map(|person| person.into())?)
     }
 
-    pub async fn by_id(pool: &Pool, id: i32) -> AsyncResult<Person> {
-        node::table
+    pub async fn by_id(pool: &Pool, id: i32) -> Result<Person> {
+        Ok(node::table
             .inner_join(person::table)
             .filter(person::id.eq(id))
             .get_result_async::<models::Person>(pool)
             .await
-            .map(|person| person.into())
+            .map(|person| person.into())?)
     }
 }

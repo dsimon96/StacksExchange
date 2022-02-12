@@ -4,8 +4,7 @@ use crate::db::{
     schema::{balance, node, person, squad},
     Pool,
 };
-use anyhow::Result;
-use async_graphql::{FieldError, FieldResult, ID};
+use async_graphql::{Error, Result, ID};
 use diesel::prelude::*;
 use std::convert::TryFrom;
 use tokio_diesel::*;
@@ -23,13 +22,11 @@ pub struct ParsedAddPersonToSquadInput {
 }
 
 impl TryFrom<AddPersonToSquadInput> for ParsedAddPersonToSquadInput {
-    type Error = FieldError;
+    type Error = Error;
 
-    fn try_from(value: AddPersonToSquadInput) -> FieldResult<ParsedAddPersonToSquadInput> {
-        let person_uid =
-            Uuid::parse_str(&value.person_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
-        let squad_uid =
-            Uuid::parse_str(&value.squad_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+    fn try_from(value: AddPersonToSquadInput) -> Result<ParsedAddPersonToSquadInput> {
+        let person_uid = Uuid::try_from(value.person_id)?;
+        let squad_uid = Uuid::try_from(value.squad_id)?;
 
         Ok(ParsedAddPersonToSquadInput {
             person_uid,
@@ -79,9 +76,7 @@ pub async fn add_person_to_squad(
             let balance = diesel::insert_into(balance::table)
                 .values(&new_balance)
                 .get_result::<models::BalanceDetail>(conn)
-                .map(|detail| Balance {
-                    model: models::Balance { node, detail },
-                })?;
+                .map(|detail| models::Balance { node, detail })?;
 
             Ok(AddPersonToSquadPayload {
                 balance: balance.into(),

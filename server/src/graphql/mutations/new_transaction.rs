@@ -4,10 +4,9 @@ use crate::db::{
     schema::{balance, node, squad, txn, txn_part},
     Pool,
 };
-use anyhow::Result;
 use async_graphql::{
     validators::{InputValueValidator, IntNonZero, ListMinLength},
-    FieldError, FieldResult, Value, ID,
+    Error, Result, Value, ID,
 };
 use diesel::prelude::*;
 use std::collections::HashMap;
@@ -53,11 +52,10 @@ pub struct ParsedBalanceChangeDetail {
 }
 
 impl TryFrom<BalanceChangeDetail> for ParsedBalanceChangeDetail {
-    type Error = FieldError;
+    type Error = Error;
 
-    fn try_from(value: BalanceChangeDetail) -> FieldResult<ParsedBalanceChangeDetail> {
-        let balance_uid =
-            Uuid::parse_str(&value.balance_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+    fn try_from(value: BalanceChangeDetail) -> Result<ParsedBalanceChangeDetail> {
+        let balance_uid = Uuid::try_from(value.balance_id)?;
 
         Ok(ParsedBalanceChangeDetail {
             balance_uid,
@@ -79,11 +77,10 @@ pub struct ParsedNewTransactionInput {
 }
 
 impl TryFrom<NewTransactionInput> for ParsedNewTransactionInput {
-    type Error = FieldError;
+    type Error = Error;
 
-    fn try_from(value: NewTransactionInput) -> FieldResult<ParsedNewTransactionInput> {
-        let squad_uid =
-            Uuid::parse_str(&value.squad_id).or_else(|_e| Err(FieldError::from("Invalid ID")))?;
+    fn try_from(value: NewTransactionInput) -> Result<ParsedNewTransactionInput> {
+        let squad_uid = Uuid::try_from(value.squad_id)?;
 
         Ok(ParsedNewTransactionInput {
             squad_uid,
@@ -95,7 +92,7 @@ impl TryFrom<NewTransactionInput> for ParsedNewTransactionInput {
 
                     Ok((parsed.balance_uid, parsed.change_cents))
                 })
-                .collect::<FieldResult<HashMap<Uuid, i32>>>()?,
+                .collect::<Result<HashMap<Uuid, i32>>>()?,
         })
     }
 }
@@ -134,9 +131,7 @@ pub async fn new_transaction(
             let transaction = diesel::insert_into(txn::table)
                 .values(&new_transaction)
                 .get_result::<models::TransactionDetail>(conn)
-                .map(|detail| Transaction {
-                    model: models::Transaction { node, detail },
-                })?;
+                .map(|detail| models::Transaction { node, detail })?;
 
             let balance_uids = input.balance_changes_detail.keys().collect::<Vec<_>>();
 
@@ -149,7 +144,7 @@ pub async fn new_transaction(
                 .iter()
                 .map(|balance| {
                     Ok(models::NewTransactionPart {
-                        txn_id: transaction.model.detail.id,
+                        txn_id: transaction.detail.id,
                         balance_id: balance.detail.id,
                         balance_change_cents: *input
                             .balance_changes_detail
